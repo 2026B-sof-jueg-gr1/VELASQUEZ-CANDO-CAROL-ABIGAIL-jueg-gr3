@@ -86,7 +86,7 @@ class SnakeScene extends Phaser.Scene {
       this.score += 10;
       this.scoreText.setText('Puntos: ' + this.score);
       this.stepDelay = Math.max(60, this.stepDelay - 3);
-      this.cameras.main.flash(80, 40, 120, 40);
+      //this.cameras.main.flash(80, 40, 120, 40);
       this.food = this.spawnFood();
       if (!this.food) return this.gameOver(true);
     } else {
