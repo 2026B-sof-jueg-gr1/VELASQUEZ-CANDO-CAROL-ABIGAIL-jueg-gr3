@@ -327,7 +327,7 @@ const AMBIENT = {
   leaves: {
     texture: 'leaf', x: { min: 0, max: 800 }, y: -10, speedY: { min: 25, max: 55 }, speedX: { min: -30, max: 30 },
     rotate: { start: 0, end: 360 }, lifespan: 14000, frequency: 450, alpha: 0.85,
-    tint: [0xe67e22, 0xd35400, 0x27ae60, 0xf1c40f]
+    tint: 0xe67e22
   },
   sand: {
     texture: 'dot', x: -10, y: { min: 0, max: 600 }, speedX: { min: 90, max: 170 }, speedY: { min: -10, max: 10 },
@@ -340,7 +340,7 @@ const AMBIENT = {
   embers: {
     texture: 'dot', x: { min: 0, max: 800 }, y: 610, speedY: { min: -70, max: -30 }, speedX: { min: -15, max: 15 },
     scale: { start: 0.7, end: 0 }, lifespan: 8000, frequency: 140, blendMode: 'ADD',
-    tint: [0xff6b00, 0xffa500, 0xff3b00]
+    tint: 0xff8c00
   },
   fireflies: {
     texture: 'dot', x: { min: 0, max: 800 }, y: { min: 0, max: 600 }, speed: { min: 5, max: 20 },
@@ -355,6 +355,7 @@ function makeTextures(scene) {
   t.fillCircle(4, 4, 4);
   t.generateTexture('dot', 8, 8);
   t.clear();
+  t.fillStyle(0xffffff); // clear() deja el relleno en negro
   t.fillEllipse(5, 3, 10, 5);
   t.generateTexture('leaf', 10, 6);
   t.destroy();
