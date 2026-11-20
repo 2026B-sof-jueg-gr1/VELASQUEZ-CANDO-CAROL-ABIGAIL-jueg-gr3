@@ -1,0 +1,38 @@
+name: Desplegar a itch.io
+
+# Cada vez que cambie el juego en main, se sube solo a itch.io con Butler.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Snake/**'
+      - '.github/workflows/deploy-itch.yml'
+  workflow_dispatch: # permite lanzarlo a mano desde la pestaña Actions
+
+env:
+  ITCH_TARGET: abi-cvc/amaru:html5 # usuario/proyecto:canal
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+
+      - name: Preparar solo los archivos del juego
+        # Snake/ también tiene PDFs y la presentación: no deben subirse a itch.io
+        run: |
+          mkdir build
+          cp Snake/index.html Snake/game.js build/
+
+      - name: Instalar Butler
+        run: |
+          curl -fsSL -o butler.zip https://broth.itch.ovh/butler/linux-amd64/LATEST/archive/default
+          unzip -q butler.zip
+          chmod +x butler
+          ./butler -V
+
+      - name: Subir a itch.io
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+        run: ./butler push build "$ITCH_TARGET" --userversion "${GITHUB_SHA::7}"
