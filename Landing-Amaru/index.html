@@ -82,7 +82,6 @@
           <filter id="ringBlur" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="7"/></filter>
           <mask id="maskH" maskUnits="userSpaceOnUse" x="0" y="0" width="300" height="380"><rect width="300" height="380" fill="url(#gH)"/></mask>
           <mask id="maskS" maskUnits="userSpaceOnUse" x="0" y="0" width="300" height="380"><rect width="300" height="380" fill="url(#gS)"/></mask>
-          <linearGradient id="gEdge" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f2b33d" stop-opacity="0"/><stop offset=".5" stop-color="#f2b33d" stop-opacity=".5"/><stop offset="1" stop-color="#f2b33d" stop-opacity="0"/></linearGradient>
           <filter id="warp" x="-10%" y="-10%" width="120%" height="120%">
             <feTurbulence id="warpT" type="fractalNoise" baseFrequency="0.012 0.03" numOctaves="2" seed="3" result="n"/>
             <feDisplacementMap id="warpD" in="SourceGraphic" in2="n" scale="0" xChannelSelector="R" yChannelSelector="G"/>
