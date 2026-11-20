@@ -76,9 +76,10 @@
           <clipPath id="mclip"><ellipse cx="150" cy="190" rx="118" ry="158"/></clipPath>
           <radialGradient id="mbg" cx="50%" cy="40%" r="70%"><stop offset="0" stop-color="#1e3a2d"/><stop offset="1" stop-color="#08110d"/></radialGradient>
           <linearGradient id="msheen" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".12"/><stop offset=".45" stop-color="#fff" stop-opacity=".03"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
-          <!-- máscaras del barrido: la persona sube desde abajo y la serpiente se retira (y al revés) -->
-          <linearGradient id="gH" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="380"><stop id="hs0" offset="1" stop-color="#000"/><stop id="hs1" offset="1" stop-color="#fff"/></linearGradient>
-          <linearGradient id="gS" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="380"><stop id="ss0" offset="1" stop-color="#fff"/><stop id="ss1" offset="1" stop-color="#000"/></linearGradient>
+          <!-- máscaras radiales (óvalo): la persona nace en el centro del espejo y se expande hacia los bordes, mientras la serpiente se retira (y al revés) -->
+          <radialGradient id="gH" gradientUnits="userSpaceOnUse" cx="150" cy="190" r="170" gradientTransform="translate(150 190) scale(.75 1) translate(-150 -190)"><stop id="hs0" offset="0" stop-color="#fff"/><stop id="hs1" offset="0" stop-color="#000"/></radialGradient>
+          <radialGradient id="gS" gradientUnits="userSpaceOnUse" cx="150" cy="190" r="170" gradientTransform="translate(150 190) scale(.75 1) translate(-150 -190)"><stop id="ss0" offset="0" stop-color="#000"/><stop id="ss1" offset="0" stop-color="#fff"/></radialGradient>
+          <filter id="ringBlur" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="7"/></filter>
           <mask id="maskH" maskUnits="userSpaceOnUse" x="0" y="0" width="300" height="380"><rect width="300" height="380" fill="url(#gH)"/></mask>
           <mask id="maskS" maskUnits="userSpaceOnUse" x="0" y="0" width="300" height="380"><rect width="300" height="380" fill="url(#gS)"/></mask>
           <linearGradient id="gEdge" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f2b33d" stop-opacity="0"/><stop offset=".5" stop-color="#f2b33d" stop-opacity=".5"/><stop offset="1" stop-color="#f2b33d" stop-opacity="0"/></linearGradient>
@@ -98,7 +99,8 @@
             <g id="womanLayer" mask="url(#maskH)" display="none"></g>
             <g id="manLayer" mask="url(#maskH)" display="none"></g>
           </g>
-          <rect id="edge" x="0" y="450" width="300" height="70" fill="url(#gEdge)" opacity="0" pointer-events="none"/>
+          <!-- anillo dorado que viaja con el frente de la transformación -->
+          <ellipse id="edge" cx="150" cy="190" rx="1" ry="1" fill="none" stroke="#f2b33d" stroke-width="20" opacity="0" filter="url(#ringBlur)" pointer-events="none"/>
           <!-- reflejo de cristal -->
           <path d="M10 20 190 0 70 380H10z" fill="url(#msheen)" pointer-events="none"/>
         </g>
@@ -752,9 +754,11 @@ function personSVG(id, c){
   const eyesOf = t => (t < BLINKS[0] || t >= BLINKS[2]) ? 1 : 0; // 1 = ojos de serpiente
 
   function setP(p, now){
-    const soft = 70, yl = (380 + 2 * soft) * (1 - p) - soft, a = clamp((yl - soft) / 380), b = clamp((yl + soft) / 380);
+    // radio del frente de la transformación: nace en el centro (p=0) y llega más allá del borde (p=1)
+    const R = 170, soft = 55, rad = (R + 2 * soft) * p - soft, a = clamp((rad - soft) / R), b = clamp((rad + soft) / R);
     stops.h0.setAttribute('offset', a); stops.h1.setAttribute('offset', b); stops.s0.setAttribute('offset', a); stops.s1.setAttribute('offset', b);
-    edge.setAttribute('y', yl - 35); edge.setAttribute('opacity', (Math.sin(Math.PI * p) * .9).toFixed(3));
+    edge.setAttribute('rx', Math.max(.1, rad * .75).toFixed(1)); edge.setAttribute('ry', Math.max(.1, rad).toFixed(1));
+    edge.setAttribute('opacity', (Math.sin(Math.PI * p) * .6).toFixed(3));
     if (p > .002 && p < .998){
       figs.setAttribute('filter', 'url(#warp)');
       wD.setAttribute('scale', (26 * Math.sin(Math.PI * p)).toFixed(2));
