@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Amaru: la Fruta del Origen</title>
+<meta name="description" content="Un explorador convertido en serpiente por robar una fruta sagrada debe cruzar cinco tierras andinas, reunir los pedazos de su memoria y volver a ser humano. Un snake de aventura andina, gratis en tu navegador.">
+<meta name="theme-color" content="#0b1410">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Amaru: la Fruta del Origen">
+<meta property="og:description" content="Un snake de aventura andina. Cruza cinco tierras, reúne los pedazos de tu memoria y vence a tu propia forma de serpiente.">
+<meta property="og:locale" content="es_EC">
+<!-- TODO: cuando haya una captura real del juego, agregar:
+<meta property="og:image" content="./img/captura.png"> -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b1410'/%3E%3Ccircle cx='16' cy='18' r='9' fill='%23f2b33d'/%3E%3Cpath d='M16 9c0-3 2-5 5-5 0 3-2 5-5 5z' fill='%233fae6a'/%3E%3Cpath d='M11 15c1-2 3-3 5-3' stroke='%23fff3c4' stroke-width='2' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Outfit:wght@400;500;700&display=swap" rel="stylesheet">
+
+<script>document.documentElement.classList.add('js');</script>
+
+<style>
+/* ---------- Tokens ---------- */
+:root{
+  --bg:#0b1410;
+  --bg-2:#101c16;
+  --surface:#15231c;
+  --surface-2:#1b2d24;
+  --line:#2b4034;
+  --text:#efe6d2;
+  --muted:#bdb6a2;
+  --gold:#f2b33d;
+  --gold-dark:#b97f12;
+  --scale:#3fae6a;
+  --forest:#3fae6a;
+  --desert:#e0b469;
+  --snow:#cfe6f2;
+  --volcano:#e2512f;
+  --night:#3d5bd9;
+  --shadow:rgba(0,0,0,.45);
+  --font-display:'Cinzel Decorative', Georgia, serif;
+  --font-body:'Outfit', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --s1:4px; --s2:8px; --s3:16px; --s4:24px; --s5:32px; --s6:48px; --s7:80px;
+  --ease:cubic-bezier(.22,.8,.3,1);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{
+  margin:0;min-height:100dvh;overflow-x:hidden;
+  background-color:var(--bg);
+  /* patrón chakana muy sutil */
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 48 48'%3E%3Cpath d='M18 6h12v6h6v6h6v12h-6v6h-6v6H18v-6h-6v-6H6V18h6v-6h6z' fill='none' stroke='%23f2b33d' stroke-opacity='.06' stroke-width='1.2'/%3E%3C/svg%3E");
+  color:var(--text);
+  font-family:var(--font-body);font-size:1.0625rem;line-height:1.65;
+}
+img,svg,canvas{display:block;max-width:100%}
+a{color:var(--gold)}
+h1,h2,h3{margin:0;font-weight:700;line-height:1.15}
+p{margin:0}
+:focus-visible{outline:3px solid var(--gold);outline-offset:4px;border-radius:6px}
+.skip{position:absolute;left:var(--s3);top:-100px;background:var(--gold);color:#1a1204;padding:var(--s2) var(--s3);border-radius:8px;z-index:100;font-weight:700}
+.skip:focus{top:var(--s3)}
+.wrap{width:min(1120px,100% - 2*var(--s3));margin-inline:auto}
+section{position:relative}
+.sec{padding-block:clamp(56px,8vw,88px)}
+.eyebrow{font-size:.8125rem;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);font-weight:700}
+.h2{font-family:var(--font-display);font-size:clamp(1.65rem,4.4vw,2.75rem);margin-top:var(--s2);text-wrap:balance}
+.lead{color:var(--muted);max-width:62ch}
+
+/* relieve 3D (mismo lenguaje del juego) */
+.block{
+  background:linear-gradient(180deg,var(--surface-2),var(--surface));
+  border:1px solid var(--line);border-radius:14px;
+  box-shadow:inset 0 3px 0 rgba(255,255,255,.07), 6px 8px 0 var(--shadow);
+}
+
+/* ---------- Botones ---------- */
+.btn{
+  position:relative;display:inline-flex;align-items:center;justify-content:center;gap:var(--s3);
+  min-height:56px;padding:14px 36px;border:0;border-radius:999px;cursor:pointer;text-decoration:none;
+  font-family:var(--font-display);font-weight:900;letter-spacing:.08em;font-size:1.25rem;color:#1a1204;
+  background:radial-gradient(circle at 35% 28%,#ffe08a 0,var(--gold) 45%,#d9971f 100%);
+  box-shadow:inset 0 6px 0 rgba(255,255,255,.4), inset 0 -8px 0 var(--gold-dark), 7px 9px 0 var(--shadow);
+  transition:transform .18s var(--ease), box-shadow .18s var(--ease), filter .18s;
+  touch-action:manipulation;
+}
+.btn:hover{transform:translate(-2px,-3px) scale(1.04);filter:brightness(1.08);box-shadow:inset 0 6px 0 rgba(255,255,255,.45), inset 0 -8px 0 var(--gold-dark), 10px 13px 0 var(--shadow), 0 0 40px rgba(242,179,61,.55)}
+.btn:active{transform:translate(3px,4px);box-shadow:inset 0 6px 0 rgba(255,255,255,.3), inset 0 -4px 0 var(--gold-dark), 2px 3px 0 var(--shadow)}
+.btn:focus-visible{outline:4px solid #fff;outline-offset:6px;box-shadow:inset 0 6px 0 rgba(255,255,255,.4), inset 0 -8px 0 var(--gold-dark), 7px 9px 0 var(--shadow), 0 0 0 8px rgba(242,179,61,.6)}
+.btn--giant{font-size:clamp(1.75rem,5vw,2.75rem);padding:22px clamp(48px,9vw,96px);min-height:84px;animation:beat 2.6s ease-in-out infinite}
+.btn--giant:hover,.btn--giant:focus-visible{animation-play-state:paused}
+.btn--dark{background:linear-gradient(180deg,#14261d,#0b1410);color:var(--gold);box-shadow:inset 0 5px 0 rgba(255,255,255,.12), inset 0 -6px 0 #050a07, 6px 8px 0 rgba(0,0,0,.35)}
+.btn--dark:hover{box-shadow:inset 0 5px 0 rgba(255,255,255,.16), inset 0 -6px 0 #050a07, 9px 12px 0 rgba(0,0,0,.4)}
+.btn--dark:focus-visible{outline-color:#1a1204}
+.btn svg{width:.9em;height:.9em;flex:none}
+@keyframes beat{0%,100%{transform:scale(1)}50%{transform:scale(1.045)}}
+.spark{position:absolute;width:8px;height:8px;border-radius:2px;background:#ffe08a;pointer-events:none;box-shadow:0 0 8px #f2b33d;z-index:3}
+
+/* ---------- Barra superior ---------- */
+.top{position:fixed;inset:var(--s3) var(--s3) auto auto;z-index:50}
+.sound{
+  display:inline-flex;align-items:center;gap:var(--s2);min-height:44px;padding:8px 16px;cursor:pointer;
+  font:500 .9rem var(--font-body);color:var(--text);background:rgba(11,20,16,.78);backdrop-filter:blur(8px);
+  border:1px solid var(--line);border-radius:999px;
+}
+.sound:hover{border-color:var(--gold)}
+.sound svg{width:20px;height:20px}
+.sound[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
+
+/* ---------- Hero ---------- */
+.hero{min-height:100dvh;display:grid;place-items:center;text-align:center;overflow:hidden;isolation:isolate;padding:96px 0 120px}
+.hero canvas{position:absolute;inset:0;width:100%;height:100%;z-index:-1}
+.hero::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background:radial-gradient(ellipse 70% 55% at 50% 48%,rgba(11,20,16,.86) 0,rgba(11,20,16,.55) 55%,rgba(11,20,16,0) 100%)}
+.hero__inner{position:relative;max-width:820px;padding-inline:var(--s3)}
+.tag{display:inline-block;padding:6px 16px;border:1px solid var(--line);border-radius:999px;background:rgba(21,35,28,.8);color:var(--muted);font-size:.9rem}
+.hero h1{
+  font-family:var(--font-display);font-weight:900;font-size:clamp(4rem,17vw,9.5rem);letter-spacing:.06em;line-height:1;
+  color:var(--gold);margin-top:var(--s3);
+  text-shadow:3px 3px 0 var(--gold-dark),7px 9px 0 rgba(0,0,0,.55),0 0 50px rgba(242,179,61,.25);
+}
+.subtitle{font-family:var(--font-display);font-size:clamp(1.15rem,3.4vw,1.75rem);font-style:normal;color:var(--text);margin-top:var(--s2);letter-spacing:.04em}
+.logline{margin:var(--s4) auto var(--s5);max-width:60ch;color:var(--text);font-size:clamp(1.05rem,2.3vw,1.25rem);text-shadow:0 2px 12px #000}
+.micro{margin-top:var(--s4);color:var(--muted);font-size:.95rem}
+.status{margin:var(--s3) auto 0;max-width:52ch;color:var(--muted);font-size:.875rem;opacity:.9}
+.scroll{position:absolute;left:50%;bottom:var(--s4);translate:-50% 0;display:grid;justify-items:center;gap:4px;color:var(--muted);text-decoration:none;font-size:.8125rem;letter-spacing:.14em;text-transform:uppercase;padding:var(--s2)}
+.scroll svg{width:22px;height:22px;animation:bob 1.8s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(7px)}}
+
+/* ---------- Historia ---------- */
+.story{display:grid;gap:var(--s6);align-items:center}
+@media(min-width:900px){.story{grid-template-columns:1.2fr .8fr}}
+.story p.body{margin-top:var(--s4);color:var(--muted);font-size:1.125rem;max-width:58ch}
+.mirror{justify-self:center;width:min(100%,320px)}
+.mirror svg{width:100%;height:auto;overflow:visible;filter:drop-shadow(8px 10px 0 rgba(0,0,0,.4))}
+.mirror .snake-fig,.mirror .human-fig{transition:opacity .22s ease, transform .22s ease;transform-origin:150px 190px}
+.mirror .human-fig{opacity:0}
+.mirror.glitch .snake-fig{opacity:.12}
+.mirror.glitch .human-fig{opacity:.9;transform:translateX(4px) skewX(-3deg)}
+.mirror figcaption{margin-top:var(--s3);text-align:center;color:var(--muted);font-size:.875rem}
+
+/* ---------- Cómo se juega ---------- */
+.how{background:linear-gradient(180deg,transparent,rgba(16,28,22,.8) 20%,rgba(16,28,22,.8) 80%,transparent)}
+.steps{list-style:none;margin:var(--s6) 0 0;padding:0;display:grid;gap:var(--s4);grid-template-columns:1fr}
+@media(min-width:620px){.steps{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:1000px){.steps{grid-template-columns:repeat(4,1fr)}}
+.step{padding:var(--s4);position:relative}
+.step .n{position:absolute;top:var(--s3);right:var(--s3);font-family:var(--font-display);font-size:2rem;color:rgba(242,179,61,.28);font-weight:900}
+.ico{width:56px;height:56px;border-radius:12px;display:grid;place-items:center;background:rgba(242,179,61,.1);color:var(--gold);margin-bottom:var(--s3)}
+.ico svg{width:32px;height:32px}
+.step h3,.feat h3{font-size:1.2rem;margin-bottom:var(--s2)}
+.step p,.feat p{color:var(--muted);font-size:1rem}
+
+/* ---------- Mundos ---------- */
+.worlds{margin-top:var(--s6);display:flex;gap:var(--s4);overflow-x:auto;scroll-snap-type:x mandatory;padding:var(--s2) var(--s3) var(--s4);margin-inline:calc(-1*var(--s3));scroll-padding-inline:var(--s3);-webkit-overflow-scrolling:touch}
+.worlds:focus-visible{outline-offset:-3px}
+.world{
+  --c:var(--forest);position:relative;flex:0 0 min(78vw,270px);min-height:320px;scroll-snap-align:start;overflow:hidden;
+  display:flex;flex-direction:column;justify-content:flex-end;padding:var(--s4);isolation:isolate;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--c) 14%,#0b1410),#0f1a14 70%);
+  border-top:5px solid var(--c);
+}
+.world canvas{position:absolute;inset:0;width:100%;height:100%;z-index:-1}
+.world .dot{width:14px;height:14px;border-radius:3px;background:var(--c);box-shadow:3px 3px 0 rgba(0,0,0,.45), inset 0 3px 0 rgba(255,255,255,.35);margin-bottom:var(--s3)}
+.world h3{font-family:var(--font-display);font-size:1.5rem;color:var(--c)}
+.world p{margin-top:var(--s2);color:var(--text);font-size:1rem}
+.world .part{margin-top:var(--s3);font-size:.8125rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.w1{--c:var(--forest)}.w2{--c:var(--desert)}.w3{--c:var(--snow)}.w4{--c:var(--volcano)}.w5{--c:#7d96ff}
+@media(min-width:1100px){
+  .worlds{display:grid;grid-template-columns:repeat(5,1fr);overflow:visible;margin-inline:0;padding-inline:0}
+  .world{flex:none}
+}
+.hint{margin-top:var(--s2);color:var(--muted);font-size:.875rem}
+@media(min-width:1100px){.hint{display:none}}
+
+/* ---------- Características ---------- */
+.feats{margin-top:var(--s6);display:grid;gap:var(--s4);grid-template-columns:1fr}
+@media(min-width:620px){.feats{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:1000px){.feats{grid-template-columns:repeat(3,1fr)}}
+.feat{padding:var(--s4)}
+.feat--wide{grid-column:1/-1}
+@media(min-width:620px){
+  .feat--wide{display:grid;grid-template-columns:auto 1fr;column-gap:var(--s4);align-items:center}
+  .feat--wide .ico{margin:0;grid-row:span 2}
+  .feat--wide h3{margin-bottom:0;align-self:end}
+  .feat--wide p{align-self:start}
+}
+
+/* ---------- Banda CTA ---------- */
+.cta{background:var(--gold);color:#1a1204;padding-block:clamp(48px,8vw,80px);text-align:center;position:relative;overflow:hidden}
+.cta::before{content:"";position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 48 48'%3E%3Cpath d='M18 6h12v6h6v6h6v12h-6v6h-6v6H18v-6h-6v-6H6V18h6v-6h6z' fill='none' stroke='%231a1204' stroke-opacity='.1' stroke-width='1.2'/%3E%3C/svg%3E");pointer-events:none}
+.cta .wrap{position:relative}
+.cta h2{font-family:var(--font-display);font-size:clamp(1.5rem,4.4vw,2.5rem);max-width:24ch;margin-inline:auto;text-wrap:balance}
+.cta .row{margin-top:var(--s5);display:flex;flex-wrap:wrap;gap:var(--s4);justify-content:center;align-items:center}
+.cta a.link{color:#1a1204;font-weight:700;text-underline-offset:4px;padding:12px 8px;min-height:44px;display:inline-flex;align-items:center}
+.cta a.link:focus-visible{outline-color:#1a1204}
+
+/* ---------- Legal ---------- */
+.rating{display:grid;gap:var(--s5);align-items:center;margin-top:var(--s5)}
+@media(min-width:760px){.rating{grid-template-columns:auto 1fr}}
+.rbox{
+  justify-self:center;width:170px;height:200px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:linear-gradient(180deg,#f4ead2,#d9ccaa);color:#1a1204;border-radius:10px;border:4px solid #1a1204;
+  box-shadow:inset 0 5px 0 rgba(255,255,255,.55), 8px 10px 0 var(--shadow);
+}
+.rbox strong{font-family:var(--font-body);font-size:3.6rem;line-height:1;font-weight:800;letter-spacing:-.02em}
+.rbox span{margin-top:var(--s2);font-size:.75rem;letter-spacing:.14em;text-transform:uppercase;font-weight:700;text-align:center;padding-inline:8px}
+.rating p.main{font-size:1.15rem;max-width:56ch}
+.rating p.small{margin-top:var(--s3);color:var(--muted);font-size:.875rem;max-width:56ch}
+
+.wall{margin-top:var(--s6)}
+.plaques{margin-top:var(--s5);display:grid;gap:var(--s4);grid-template-columns:1fr}
+@media(min-width:700px){.plaques{grid-template-columns:repeat(2,1fr)}}
+.plaque{padding:var(--s4);background:linear-gradient(180deg,#26332c,#18241d);border:1px solid #3a4c41;border-radius:10px;
+  box-shadow:inset 0 3px 0 rgba(255,255,255,.08), inset 0 -3px 0 rgba(0,0,0,.35), 6px 8px 0 var(--shadow)}
+.plaque h3{font-family:var(--font-display);font-size:1.15rem;color:var(--gold)}
+.plaque .by{color:var(--muted);font-size:.9rem;margin-top:2px}
+.plaque .lic{display:inline-block;margin-top:var(--s3);padding:2px 10px;border:1px solid var(--line);border-radius:6px;font-size:.8125rem;color:var(--text);background:rgba(0,0,0,.25)}
+.plaque p{margin-top:var(--s2);font-size:.98rem;color:var(--muted)}
+.plaque a{overflow-wrap:anywhere}
+.priv{margin-top:var(--s5);padding:var(--s4);border-left:4px solid var(--scale);background:rgba(63,174,106,.08);border-radius:0 10px 10px 0;max-width:80ch}
+.priv h3{font-size:1.05rem;margin-bottom:var(--s2)}
+.priv p{color:var(--muted)}
+
+/* ---------- Footer ---------- */
+footer{border-top:1px solid var(--line);padding-block:var(--s6);background:rgba(5,10,7,.6)}
+.foot{display:grid;gap:var(--s5);align-items:center}
+@media(min-width:760px){.foot{grid-template-columns:1fr auto}}
+footer .studio{font-family:var(--font-display);font-size:1.25rem;color:var(--gold)}
+footer p{color:var(--muted);font-size:.95rem;margin-top:var(--s2)}
+footer ul{list-style:none;padding:0;margin:var(--s3) 0 0;display:flex;flex-wrap:wrap;gap:var(--s2) var(--s4)}
+footer a{display:inline-flex;align-items:center;min-height:44px}
+.coil{width:110px;height:110px;justify-self:start}
+@media(min-width:760px){.coil{justify-self:end}}
+.coil .cell{opacity:1}
+.js .coil .cell{opacity:0}
+.coil.in .cell{animation:coilIn .35s var(--ease) forwards;animation-delay:calc(var(--i) * 90ms)}
+@keyframes coilIn{from{opacity:0;transform:scale(.4)}to{opacity:1;transform:scale(1)}}
+.coil .cell{transform-box:fill-box;transform-origin:center}
+
+/* ---------- Reveal ---------- */
+.js .reveal{opacity:0;transform:translateY(28px);transition:opacity .8s var(--ease),transform .8s var(--ease);transition-delay:var(--d,0ms)}
+.js .reveal.in{opacity:1;transform:none}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation:none !important;transition:none !important}
+  .js .reveal{opacity:1;transform:none}
+  .js .coil .cell{opacity:1}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#historia">Saltar al contenido</a>
+
+<div class="top">
+  <button class="sound" id="sound" type="button" aria-pressed="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path id="wave" d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" opacity="0"/></svg>
+    <span id="soundTxt">Activar sonido</span>
+  </button>
+</div>
+
+<main>
+<!-- ============ HERO ============ -->
+<section class="hero" id="inicio" aria-labelledby="titulo">
+  <canvas id="heroCanvas" aria-hidden="true"></canvas>
+  <div class="hero__inner">
+    <span class="tag">Un snake de aventura andina</span>
+    <h1 id="titulo">AMARU</h1>
+    <p class="subtitle"><em style="font-style:italic">La Fruta del Origen</em></p>
+    <p class="logline">Un explorador convertido en serpiente por robar una fruta sagrada debe cruzar cinco tierras andinas, reunir los pedazos de su memoria y vencer a su propia forma de serpiente para volver a ser humano.</p>
+    <!-- TODO: cuando exista el juego final de Amaru, cambiar este destino. Hoy apunta a la primera fase (Snake). -->
+    <a class="btn btn--giant" id="play" href="../Snake/index.html">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>
+      JUGAR
+    </a>
+    <p class="micro">Gratis en tu navegador · PC y celular</p>
+    <p class="status">Estás viendo la visión de Amaru. Por ahora el botón abre la primera fase del proyecto (Snake); el juego completo llegará por etapas.</p>
+  </div>
+  <a class="scroll" href="#historia" aria-label="Desplázate hacia abajo para seguir leyendo">
+    <span>Desliza</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+  </a>
+</section>
+
+<!-- ============ HISTORIA ============ -->
+<section class="sec" id="historia" aria-labelledby="h-historia">
+  <div class="wrap story">
+    <div class="reveal">
+      <span class="eyebrow">La historia</span>
+      <h2 class="h2" id="h-historia">Para volver a ser humano, primero tendrás que ser más serpiente</h2>
+      <p class="body">Inti mordió la fruta equivocada. La guardiana del bosque lo convirtió en serpiente y rompió su forma humana en cinco fragmentos, escondidos en cinco tierras. En cada una crece una Fruta del Origen, pero solo brota si le ofreces lo que esa tierra guarda. Cada fruta te devuelve un pedazo de tu cuerpo y un recuerdo de tu vida. Los recuerdos llegan desordenados. Y la serpiente que llevas dentro no piensa dejarte ir.</p>
+    </div>
+    <figure class="mirror reveal" id="mirror" style="--d:120ms;margin:0">
+      <svg viewBox="0 0 300 380" role="img" aria-label="Un espejo ovalado de piedra que refleja la silueta de una serpiente. Cada pocos segundos, por un instante, aparece la silueta de un humano.">
+        <defs>
+          <clipPath id="mclip"><ellipse cx="150" cy="190" rx="118" ry="158"/></clipPath>
+          <radialGradient id="mbg" cx="50%" cy="40%" r="70%"><stop offset="0" stop-color="#1e3a2d"/><stop offset="1" stop-color="#08110d"/></radialGradient>
+        </defs>
+        <ellipse cx="150" cy="190" rx="134" ry="174" fill="#26332c" stroke="#3a4c41" stroke-width="4"/>
+        <ellipse cx="150" cy="190" rx="124" ry="164" fill="none" stroke="#f2b33d" stroke-opacity=".55" stroke-width="3"/>
+        <g clip-path="url(#mclip)">
+          <rect width="300" height="380" fill="url(#mbg)"/>
+          <g class="snake-fig">
+            <path d="M80 320C60 250 235 262 222 196S92 160 150 96" fill="none" stroke="#0a150f" stroke-width="40" stroke-linecap="round" transform="translate(6 7)" opacity=".6"/>
+            <path d="M80 320C60 250 235 262 222 196S92 160 150 96" fill="none" stroke="#2a8650" stroke-width="40" stroke-linecap="round"/>
+            <path d="M80 320C60 250 235 262 222 196S92 160 150 96" fill="none" stroke="#3fae6a" stroke-width="30" stroke-linecap="round"/>
+            <circle cx="150" cy="96" r="22" fill="#5fd58a"/>
+            <circle cx="142" cy="92" r="4" fill="#0b1410"/><circle cx="158" cy="92" r="4" fill="#0b1410"/>
+          </g>
+          <g class="human-fig" fill="#efe6d2">
+            <circle cx="150" cy="118" r="30"/>
+            <path d="M92 330C92 235 108 180 150 180s58 55 58 150z"/>
+          </g>
+        </g>
+      </svg>
+      <figcaption>Cada tanto, el espejo te recuerda quién eras.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============ CÓMO SE JUEGA ============ -->
+<section class="sec how" id="como-se-juega" aria-labelledby="h-como">
+  <div class="wrap">
+    <div class="reveal">
+      <span class="eyebrow">Cómo se juega</span>
+      <h2 class="h2" id="h-como">Come. Crece. Muda.</h2>
+    </div>
+    <ol class="steps">
+      <li class="step block reveal">
+        <span class="n" aria-hidden="true">1</span>
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7c-3-2-8-1-8 5 0 5 3 9 6 9 1 0 1.5-.5 2-.5s1 .5 2 .5c3 0 6-4 6-9 0-6-5-7-8-5z"/><path d="M12 7c0-2 1-4 3-5"/></svg></div>
+        <h3>Come manzanas</h3>
+        <p>Cada una suma puntos, te alarga y te hace más rápido.</p>
+      </li>
+      <li class="step block reveal">
+        <span class="n" aria-hidden="true">2</span>
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12l4 6-10 12L2 9z"/><path d="M2 9h20M9 3 7 9l5 12 5-12-2-6"/></svg></div>
+        <h3>Reúne los materiales</h3>
+        <p>Cada tierra esconde tres. Júntalos y la Fruta del Origen aparecerá, pero solo por 8 segundos.</p>
+      </li>
+      <li class="step block reveal">
+        <span class="n" aria-hidden="true">3</span>
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 18c0-7 6-5 8-8s-2-6-5-4"/><path d="M12 10c3-3 8-1 8 5 0 4-3 6-6 6"/><circle cx="17.5" cy="14.5" r=".8" fill="currentColor"/></svg></div>
+        <h3>Muda la piel</h3>
+        <p>Al comer la fruta vuelves a tu tamaño inicial, cambias de aspecto y recuperas un recuerdo.</p>
+      </li>
+      <li class="step block reveal">
+        <span class="n" aria-hidden="true">4</span>
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/><path d="M12 3v4"/></svg></div>
+        <h3>Ordena tu memoria</h3>
+        <p>Al final, los recuerdos son la llave de la puerta de regreso.</p>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- ============ MUNDOS ============ -->
+<section class="sec" id="mundos" aria-labelledby="h-mundos">
+  <div class="wrap">
+    <div class="reveal">
+      <span class="eyebrow">Los cinco mundos</span>
+      <h2 class="h2" id="h-mundos">Cinco tierras, cinco fragmentos</h2>
+      <p class="hint">Desliza para ver todas las tierras →</p>
+    </div>
+    <div class="worlds reveal" tabindex="0" role="region" aria-label="Las cinco tierras. Desplázate horizontalmente para verlas todas.">
+      <article class="world block w1">
+        <canvas data-kind="leaf" aria-hidden="true"></canvas>
+        <span class="dot" aria-hidden="true"></span>
+        <h3>Bosque</h3>
+        <p>Donde empezó todo. Musgo, una serpiente verde, necesita tu ayuda.</p>
+        <span class="part">Fragmento 1</span>
+      </article>
+      <article class="world block w2">
+        <canvas data-kind="sand" aria-hidden="true"></canvas>
+        <span class="dot" aria-hidden="true"></span>
+        <h3>Desierto</h3>
+        <p>Escorpiones que cruzan en línea recta y un oasis que guarda agua sagrada.</p>
+        <span class="part">Fragmento 2</span>
+      </article>
+      <article class="world block w3">
+        <canvas data-kind="snow" aria-hidden="true"></canvas>
+        <span class="dot" aria-hidden="true"></span>
+        <h3>Nieve</h3>
+        <p>Bloques de hielo que se deslizan y la flor de chuquiragua bajo la escarcha.</p>
+        <span class="part">Fragmento 3</span>
+      </article>
+      <article class="world block w4">
+        <canvas data-kind="ember" aria-hidden="true"></canvas>
+        <span class="dot" aria-hidden="true"></span>
+        <h3>Volcán</h3>
+        <p>El suelo escupe culebras de lava. Una de ellas podría cambiar de bando.</p>
+        <span class="part">Fragmento 4</span>
+      </article>
+      <article class="world block w5">
+        <canvas data-kind="firefly" aria-hidden="true"></canvas>
+        <span class="dot" aria-hidden="true"></span>
+        <h3>Noche</h3>
+        <p>La última tierra. Murciélagos en zigzag y una luz que guía hacia la puerta.</p>
+        <span class="part">Fragmento 5</span>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CARACTERÍSTICAS ============ -->
+<section class="sec" id="caracteristicas" aria-labelledby="h-feats">
+  <div class="wrap">
+    <div class="reveal">
+      <span class="eyebrow">Características</span>
+      <h2 class="h2" id="h-feats">Lo que te espera</h2>
+    </div>
+    <div class="feats">
+      <article class="feat block reveal">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 20 6-10 4 6 3-4 5 8z"/><circle cx="17" cy="6" r="2"/></svg></div>
+        <h3>Cinco mundos</h3><p>Con su propio clima, enemigos y materiales.</p>
+      </article>
+      <article class="feat block reveal">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 15c3-6 5 6 9 0s6 6 9 0"/><circle cx="20" cy="8" r="2"/></svg></div>
+        <h3>Amigos que te siguen</h3><p>Rescata a cinco miniserpientes y viajarán contigo como parte de tu cola.</p>
+      </article>
+      <article class="feat block reveal">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg></div>
+        <h3>Poderes</h3><p>Escudo, cámara lenta, puntos dobles y tijeras que cortan tu propia cola.</p>
+      </article>
+      <article class="feat block reveal">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="M12 7v5l3 2"/></svg></div>
+        <h3>La cámara del recuerdo</h3><p>Gira los anillos hasta que la imagen encaje y recupera quién eras.</p>
+      </article>
+      <article class="feat block reveal">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></div>
+        <h3>Una batalla final épica</h3><p>Monta una super serpiente formada por tus amigos contra la mega serpiente que fuiste.</p>
+      </article>
+      <article class="feat block reveal">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21v-8M12 13 5 6M12 13l7-7"/><path d="M5 10V6h4M19 10V6h-4"/></svg></div>
+        <h3>Dos finales</h3><p>Lo que decidas al final cambia cómo termina la historia.</p>
+      </article>
+      <article class="feat feat--wide block reveal">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg></div>
+        <h3>Juega donde quieras</h3><p>Teclado (flechas o WASD) en PC y deslizando el dedo en celular.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ BANDA CTA ============ -->
+<section class="cta" aria-labelledby="h-cta">
+  <div class="wrap reveal">
+    <h2 id="h-cta">La Fruta del Origen solo aparece por 8 segundos. ¿Vas a dejarla escapar?</h2>
+    <div class="row">
+      <a class="btn btn--dark" href="../Snake/index.html">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>
+        JUGAR
+      </a>
+      <!-- TODO: reemplazar href="#" por el enlace real de la página del juego en itch.io -->
+      <a class="link" href="#" data-todo="itch">Síguenos en itch.io</a>
+    </div>
+  </div>
+</section>
+
+<!-- ============ LEGAL ============ -->
+<section class="sec" id="legal" aria-labelledby="h-clas">
+  <div class="wrap">
+    <div class="reveal">
+      <span class="eyebrow">Clasificación</span>
+      <h2 class="h2" id="h-clas">¿Para quién es Amaru?</h2>
+      <div class="rating">
+        <div class="rbox" role="img" aria-label="Clasificación creativa E10+"><strong>E10+</strong><span>Clasificación del equipo</span></div>
+        <div>
+          <p class="main">Apto para cualquier humano que no le tenga miedo a las serpientes. Contiene violencia fantástica entre reptiles gigantes y una cantidad irresponsable de manzanas.</p>
+          <p class="small">Clasificación creativa hecha por el equipo, inspirada en los sistemas ESRB y PEGI. No es una clasificación oficial.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="wall" id="honor">
+      <div class="reveal">
+        <h2 class="h2" id="h-honor">Muro de Honor</h2>
+        <p class="lead" style="margin-top:var(--s3)">Este juego existe gracias a herramientas libres y a gente que comparte su trabajo.</p>
+      </div>
+      <div class="plaques">
+        <article class="plaque reveal">
+          <h3>Phaser 3</h3>
+          <p class="by">Motor del juego, por Phaser Studio</p>
+          <span class="lic">Licencia MIT</span>
+          <p><a href="https://phaser.io" target="_blank" rel="noopener">phaser.io</a></p>
+        </article>
+        <article class="plaque reveal" style="--d:80ms">
+          <h3>Cinzel Decorative y Outfit</h3>
+          <p class="by">Fuentes de esta página, vía Google Fonts</p>
+          <span class="lic">SIL Open Font License</span>
+        </article>
+        <article class="plaque reveal" style="--d:160ms">
+          <h3>Gráficos</h3>
+          <p class="by">Dibujados con código por el equipo</p>
+          <span class="lic">Sin imágenes de terceros</span>
+        </article>
+        <article class="plaque reveal" style="--d:240ms">
+          <h3>Sonidos</h3>
+          <p class="by">Generados con osciladores de WebAudio por el equipo</p>
+          <span class="lic">Sin archivos de audio de terceros</span>
+        </article>
+      </div>
+      <p class="hint reveal" style="display:block;margin-top:var(--s4)">Si se agregan ilustraciones, música o sonidos externos, cada uno se acreditará aquí con autor, enlace y licencia.</p>
+
+      <div class="priv reveal">
+        <h3>Privacidad</h3>
+        <p>Amaru solo guarda tu récord de puntos en tu propio navegador (localStorage). No recoge datos personales, no usa cookies de seguimiento y no envía nada a ningún servidor.</p>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<!-- ============ FOOTER ============ -->
+<footer>
+  <div class="wrap foot">
+    <div>
+      <!-- TODO: poner el nombre real del estudio y de los integrantes -->
+      <p class="studio" style="margin:0">[NOMBRE DEL ESTUDIO]</p>
+      <p>Integrantes: [INTEGRANTES DEL EQUIPO]</p>
+      <p>Proyecto de Desarrollo de Juegos Interactivos · 2026</p>
+      <ul>
+        <li><a href="https://github.com/2026B-sof-jueg-gr1/VELASQUEZ-CANDO-CAROL-ABIGAIL-jueg-gr3" target="_blank" rel="noopener">Repositorio en GitHub</a></li>
+        <!-- TODO: reemplazar por el enlace real de itch.io -->
+        <li><a href="#" data-todo="itch">Página en itch.io</a></li>
+      </ul>
+    </div>
+    <svg class="coil" id="coil" viewBox="0 0 110 110" role="img" aria-label="Una pequeña serpiente de bloques que se enrolla"></svg>
+  </div>
+</footer>
+
+<script>
+(() => {
+'use strict';
+
+/* ---------- Utilidades ---------- */
+const RM = matchMedia('(prefers-reduced-motion: reduce)');
+let reduced = RM.matches;
+const systems = [];
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const rand = (a, b) => a + Math.random() * (b - a);
+
+function shade(hex, amt){ // amt -1..1
+  const n = parseInt(hex.slice(1), 16);
+  let r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  const f = amt < 0 ? 0 : 255, p = Math.abs(amt);
+  r = Math.round((f - r) * p + r); g = Math.round((f - g) * p + g); b = Math.round((f - b) * p + b);
+  return `rgb(${r},${g},${b})`;
+}
+// Bloque con relieve: sombra abajo-derecha, lado oscuro, cara superior y franja de luz
+function drawBlock(ctx, x, y, s, color){
+  ctx.fillStyle = 'rgba(0,0,0,.38)'; ctx.fillRect(x + s*.14, y + s*.16, s, s);
+  ctx.fillStyle = shade(color, -.4);  ctx.fillRect(x, y, s, s);
+  ctx.fillStyle = color;              ctx.fillRect(x, y, s*.88, s*.84);
+  ctx.fillStyle = 'rgba(255,255,255,.3)'; ctx.fillRect(x, y, s*.88, s*.17);
+}
+
+/* Registro de lienzos animados */
+function setupCanvas(canvas, sys){
+  const parent = canvas.parentElement;
+  sys.canvas = canvas; sys.ctx = canvas.getContext('2d'); sys.visible = true;
+  const resize = () => {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    sys.w = parent.clientWidth; sys.h = parent.clientHeight;
+    canvas.width = sys.w * dpr; canvas.height = sys.h * dpr;
+    sys.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    sys.init(); sys.draw();
+  };
+  new ResizeObserver(resize).observe(parent);
+  new IntersectionObserver(es => { sys.visible = es[0].isIntersecting; }, { rootMargin: '80px' }).observe(canvas);
+  systems.push(sys);
+  resize();
+}
+
+let last = performance.now();
+function loop(now){
+  const dt = Math.min(now - last, 50); last = now;
+  if (!reduced) for (const s of systems){ if (s.visible){ s.update(dt); s.draw(); } }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+RM.addEventListener('change', e => { reduced = e.matches; systems.forEach(s => { s.init(); s.draw(); }); });
+
+/* ---------- Partículas ---------- */
+function particleSystem(kind, count, colors){
+  let ps = [];
+  const spawn = (p, first) => {
+    const w = sys.w, h = sys.h;
+    p.c = colors[(Math.random() * colors.length) | 0];
+    p.ph = rand(0, 6.28); p.rot = rand(0, 6.28); p.life = 1;
+    switch (kind){
+      case 'leaf':  p.x = rand(0, w); p.y = first ? rand(0, h) : -12; p.vx = 0; p.vy = rand(.025, .06); p.s = rand(4, 8); break;
+      case 'sand':  p.x = first ? rand(0, w) : -6; p.y = rand(h*.35, h); p.vx = rand(.08, .2); p.vy = 0; p.s = rand(1, 2.2); break;
+      case 'snow':  p.x = rand(0, w); p.y = first ? rand(0, h) : -6; p.vx = 0; p.vy = rand(.02, .05); p.s = rand(1.5, 3.2); break;
+      case 'ember': p.x = rand(0, w); p.y = first ? rand(0, h) : h + 6; p.vx = 0; p.vy = -rand(.03, .08); p.s = rand(1.2, 2.8); break;
+      default:      p.x = rand(0, w); p.y = rand(0, h); p.vx = rand(-.01, .01); p.vy = rand(-.012, .012); p.s = rand(1.6, 3.4);
+    }
+  };
+  const sys = {
+    init(){ ps = Array.from({ length: count }, () => { const p = {}; spawn(p, true); return p; }); },
+    update(dt){
+      for (const p of ps){
+        p.ph += dt * .0016;
+        if (kind === 'leaf'){ p.x += Math.sin(p.ph * 2) * .4 * (dt/16); p.y += p.vy * dt; p.rot += dt * .002; }
+        else if (kind === 'sand'){ p.x += p.vx * dt; p.y += Math.sin(p.ph * 3) * .15; }
+        else if (kind === 'snow'){ p.x += Math.sin(p.ph * 1.5) * .25 * (dt/16); p.y += p.vy * dt; }
+        else if (kind === 'ember'){ p.x += Math.sin(p.ph * 2.5) * .3 * (dt/16); p.y += p.vy * dt; p.life = Math.max(0, p.y / sys.h); }
+        else { p.x += p.vx * dt + Math.sin(p.ph) * .12; p.y += p.vy * dt + Math.cos(p.ph * 1.3) * .1; }
+        if (p.y > sys.h + 14 || p.x > sys.w + 8 || p.y < -14 && kind === 'ember') spawn(p, false);
+        if (p.x < -14 && kind !== 'sand') p.x = sys.w + 6;
+        if (p.x > sys.w + 14 && kind !== 'sand') p.x = -6;
+        if (kind === 'firefly'){ if (p.y < -10) p.y = sys.h + 6; if (p.y > sys.h + 10) p.y = -6; }
+      }
+    },
+    draw(){
+      const c = sys.ctx; c.clearRect(0, 0, sys.w, sys.h);
+      for (const p of ps){
+        if (kind === 'leaf'){
+          c.save(); c.translate(p.x, p.y); c.rotate(p.rot); c.fillStyle = p.c; c.globalAlpha = .75;
+          c.beginPath(); c.ellipse(0, 0, p.s, p.s * .45, 0, 0, 6.28); c.fill(); c.restore();
+        } else if (kind === 'firefly'){
+          const a = .35 + .45 * (.5 + .5 * Math.sin(p.ph * 1.6));
+          const g = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.s * 5);
+          g.addColorStop(0, `rgba(255,224,130,${a})`); g.addColorStop(1, 'rgba(255,224,130,0)');
+          c.fillStyle = g; c.beginPath(); c.arc(p.x, p.y, p.s * 5, 0, 6.28); c.fill();
+          c.fillStyle = `rgba(255,244,200,${Math.min(1, a + .2)})`; c.beginPath(); c.arc(p.x, p.y, p.s * .7, 0, 6.28); c.fill();
+        } else {
+          c.globalAlpha = kind === 'ember' ? .3 + .6 * p.life : .75;
+          c.fillStyle = p.c; c.beginPath(); c.arc(p.x, p.y, p.s, 0, 6.28); c.fill();
+        }
+      }
+      c.globalAlpha = 1;
+    }
+  };
+  return sys;
+}
+
+const palettes = {
+  leaf: ['#3fae6a', '#6fcf8c', '#2a8650'],
+  sand: ['#e0b469', '#f0cf8d'],
+  snow: ['#cfe6f2', '#ffffff'],
+  ember: ['#e2512f', '#f2b33d', '#ff7a45'],
+  firefly: ['#ffe082']
+};
+$$('.world canvas').forEach(cv => {
+  const kind = cv.dataset.kind;
+  setupCanvas(cv, particleSystem(kind, 22, palettes[kind]));
+});
+
+/* ---------- Hero: luciérnagas + serpiente ---------- */
+const hero = $('#heroCanvas');
+const flies = particleSystem('firefly', 46, palettes.firefly);
+const snakeSys = (() => {
+  let cols, rows, ox, oy, cell, snake, dir, fruit, acc = 0, t = 0, maxLen = 12, grow = 0;
+  const STEP = 120;
+  const wrapX = x => (x + cols) % cols, wrapY = y => (y + rows) % rows;
+  const dist = (a, b) => {
+    let dx = Math.abs(a.x - b.x), dy = Math.abs(a.y - b.y);
+    return Math.min(dx, cols - dx) + Math.min(dy, rows - dy);
+  };
+  const occupied = (x, y) => snake.some(s => s.x === x && s.y === y);
+  function placeFruit(){
+    for (let i = 0; i < 40; i++){
+      const f = { x: (Math.random() * cols) | 0, y: (Math.random() * rows) | 0 };
+      if (!occupied(f.x, f.y) && dist(f, snake[0]) > 5){ fruit = f; return; }
+    }
+    fruit = { x: (snake[0].x + 6) % cols, y: snake[0].y };
+  }
+  const sys = {
+    init(){
+      cell = sys.w < 600 ? 22 : 30;
+      cols = Math.max(10, Math.floor(sys.w / cell)); rows = Math.max(8, Math.floor(sys.h / cell));
+      ox = (sys.w - cols * cell) / 2; oy = (sys.h - rows * cell) / 2;
+      const sx = Math.floor(cols * .3), sy = Math.floor(rows * .75);
+      snake = Array.from({ length: 7 }, (_, i) => ({ x: wrapX(sx - i), y: sy }));
+      dir = { x: 1, y: 0 }; grow = 0; acc = 0;
+      placeFruit();
+    },
+    update(dt){
+      t += dt; acc += dt;
+      while (acc >= STEP){ acc -= STEP; step(); }
+    },
+    draw(){
+      const c = sys.ctx; c.clearRect(0, 0, sys.w, sys.h);
+      // fruta dorada con brillo suave
+      const px = ox + fruit.x * cell + cell / 2, py = oy + fruit.y * cell + cell / 2;
+      const pulse = 1 + .12 * Math.sin(t / 380);
+      const g = c.createRadialGradient(px, py, 0, px, py, cell * 2.4 * pulse);
+      g.addColorStop(0, 'rgba(242,179,61,.55)'); g.addColorStop(1, 'rgba(242,179,61,0)');
+      c.fillStyle = g; c.beginPath(); c.arc(px, py, cell * 2.4 * pulse, 0, 6.28); c.fill();
+      drawBlock(c, ox + fruit.x * cell + 2, oy + fruit.y * cell + 2, cell - 4, '#f2b33d');
+      // serpiente de bloques con relieve
+      for (let i = snake.length - 1; i >= 0; i--){
+        const s = snake[i];
+        const base = i === 0 ? '#6fe095' : (i % 2 ? '#3fae6a' : '#37a05f');
+        drawBlock(c, ox + s.x * cell + 2, oy + s.y * cell + 2, cell - 4, shade(base, Math.min(.0, -i * .012)));
+      }
+      const h = snake[0], hx = ox + h.x * cell, hy = oy + h.y * cell;
+      c.fillStyle = '#0b1410';
+      const e = cell * .12;
+      c.fillRect(hx + cell * .3, hy + cell * .3, e * 1.4, e * 1.4);
+      c.fillRect(hx + cell * .6, hy + cell * .3, e * 1.4, e * 1.4);
+    }
+  };
+  function step(){
+    const head = snake[0];
+    const opts = [dir, { x: -dir.y, y: dir.x }, { x: dir.y, y: -dir.x }];
+    let best = null, bestScore = 1e9;
+    for (const d of opts){
+      const n = { x: wrapX(head.x + d.x), y: wrapY(head.y + d.y) };
+      if (occupied(n.x, n.y)) continue;
+      const score = dist(n, fruit) - (d === dir ? .4 : 0) + Math.random() * .3;
+      if (score < bestScore){ bestScore = score; best = { d, n }; }
+    }
+    if (!best){ sys.init(); return; }
+    dir = best.d; snake.unshift(best.n);
+    if (best.n.x === fruit.x && best.n.y === fruit.y){
+      if (snake.length - 1 < maxLen) grow = 1;
+      placeFruit();
+    }
+    if (grow > 0) grow--; else snake.pop();
+  }
+  return sys;
+})();
+// Un solo canvas, dos sistemas: luciérnagas debajo, serpiente encima
+(() => {
+  const dpr = () => Math.min(window.devicePixelRatio || 1, 2);
+  const ctxHero = hero.getContext('2d');
+  const combo = {
+    visible: true, w: 0, h: 0,
+    init(){ flies.w = snakeSys.w = combo.w; flies.h = snakeSys.h = combo.h; flies.init(); snakeSys.init(); },
+    update(dt){ flies.update(dt); snakeSys.update(dt); },
+    draw(){
+      ctxHero.clearRect(0, 0, combo.w, combo.h);
+      flies.ctx = snakeSys.ctx = ctxHero;
+      // las luciérnagas se dibujan sin borrar el lienzo
+      const clear = ctxHero.clearRect; ctxHero.clearRect = () => {};
+      flies.draw(); snakeSys.draw();
+      ctxHero.clearRect = clear;
+    }
+  };
+  setupCanvas(hero, combo);
+})();
+
+/* ---------- Espejo: glitch breve ---------- */
+(() => {
+  const m = $('#mirror');
+  setInterval(() => {
+    if (reduced) return;
+    m.classList.add('glitch');
+    setTimeout(() => m.classList.remove('glitch'), 650);
+  }, 5200);
+})();
+
+/* ---------- Aparición al hacer scroll ---------- */
+(() => {
+  const els = $$('.reveal');
+  if (!('IntersectionObserver' in window)){ els.forEach(e => e.classList.add('in')); return; }
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); }
+  }), { threshold: .12 });
+  $$('.steps, .feats').forEach(g => $$('.reveal', g).forEach((el, i) => el.style.setProperty('--d', i * 70 + 'ms')));
+  els.forEach(e => io.observe(e));
+})();
+
+/* ---------- Serpiente de bloques que se enrolla (footer) ---------- */
+(() => {
+  const svg = $('#coil'); const NS = 'http://www.w3.org/2000/svg';
+  const path = [[0,0],[1,0],[2,0],[3,0],[3,1],[3,2],[3,3],[2,3],[1,3],[0,3],[0,2],[0,1],[1,1],[2,1],[2,2],[1,2]];
+  const S = 22, off = 8;
+  const rect = (g, x, y, w, h, f) => { const r = document.createElementNS(NS, 'rect'); r.setAttribute('x', x); r.setAttribute('y', y); r.setAttribute('width', w); r.setAttribute('height', h); r.setAttribute('fill', f); g.appendChild(r); };
+  path.forEach(([cx, cy], i) => {
+    const g = document.createElementNS(NS, 'g'); g.setAttribute('class', 'cell'); g.style.setProperty('--i', i);
+    const x = off + cx * S, y = off + cy * S, s = S - 3, base = i === path.length - 1 ? '#6fe095' : (i % 2 ? '#3fae6a' : '#37a05f');
+    rect(g, x + 3, y + 3, s, s, 'rgba(0,0,0,.4)');
+    rect(g, x, y, s, s, shade(base, -.4));
+    rect(g, x, y, s * .88, s * .84, base);
+    rect(g, x, y, s * .88, s * .17, 'rgba(255,255,255,.3)');
+    if (i === path.length - 1){ rect(g, x + 5, y + 6, 3, 3, '#0b1410'); rect(g, x + 12, y + 6, 3, 3, '#0b1410'); }
+    svg.appendChild(g);
+  });
+  new IntersectionObserver((es, o) => { if (es[0].isIntersecting){ svg.classList.add('in'); o.disconnect(); } }, { threshold: .4 }).observe(svg);
+})();
+
+/* ---------- Sonido (opcional, apagado por defecto) ---------- */
+let audio = null, soundOn = false;
+const btnSound = $('#sound');
+function tone(freq){
+  if (!soundOn || !audio) return;
+  const o = audio.createOscillator(), g = audio.createGain(), t = audio.currentTime;
+  o.type = 'sine'; o.frequency.setValueAtTime(freq, t); o.frequency.exponentialRampToValueAtTime(freq * 1.25, t + .16);
+  g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.05, t + .03); g.gain.exponentialRampToValueAtTime(.0001, t + .22);
+  o.connect(g).connect(audio.destination); o.start(t); o.stop(t + .25);
+}
+btnSound.addEventListener('click', () => {
+  soundOn = !soundOn;
+  if (soundOn && !audio){ try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { soundOn = false; } }
+  if (soundOn && audio && audio.state === 'suspended') audio.resume();
+  btnSound.setAttribute('aria-pressed', soundOn);
+  $('#soundTxt').textContent = soundOn ? 'Sonido activado' : 'Activar sonido';
+  $('#wave').style.opacity = soundOn ? 1 : 0;
+  tone(440);
+});
+$$('.btn').forEach((b, i) => {
+  const f = 330 + i * 110;
+  b.addEventListener('mouseenter', () => tone(f));
+  b.addEventListener('focus', () => tone(f));
+});
+
+/* ---------- Chispas doradas en JUGAR ---------- */
+(() => {
+  const btn = $('#play'); let lastT = 0, live = 0;
+  btn.addEventListener('pointermove', e => {
+    if (reduced || e.pointerType === 'touch') return;
+    const now = performance.now(); if (now - lastT < 45 || live > 16) return; lastT = now;
+    const r = btn.getBoundingClientRect(), sp = document.createElement('span');
+    sp.className = 'spark'; sp.style.left = e.clientX - r.left - 4 + 'px'; sp.style.top = e.clientY - r.top - 4 + 'px';
+    btn.appendChild(sp); live++;
+    const dx = rand(-30, 30), dy = rand(-50, -15);
+    sp.animate([{ transform: 'translate(0,0) scale(1)', opacity: 1 }, { transform: `translate(${dx}px,${dy}px) scale(.2)`, opacity: 0 }], { duration: 700, easing: 'ease-out' })
+      .onfinish = () => { sp.remove(); live--; };
+  });
+})();
+
+/* ---------- Enlaces pendientes (itch.io) ---------- */
+$$('[data-todo="itch"]').forEach(a => a.addEventListener('click', e => e.preventDefault()));
+})();
+</script>
+</body>
+</html>
