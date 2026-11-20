@@ -23,6 +23,13 @@
 <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
+<!-- Degradados compartidos por las serpientes realistas (espejo y footer) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <radialGradient id="mscale" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#5fc382"/><stop offset=".6" stop-color="#2f8f55"/><stop offset="1" stop-color="#1d6040"/></radialGradient>
+    <radialGradient id="mhead" cx=".35" cy=".28" r=".85"><stop offset="0" stop-color="#74d695"/><stop offset=".55" stop-color="#2f8f55"/><stop offset="1" stop-color="#1b5636"/></radialGradient>
+  </defs>
+</svg>
 <a class="skip" href="#historia">Saltar al contenido</a>
 
 <div class="top">
@@ -64,26 +71,36 @@
       <p class="body">Inti mordió la fruta equivocada. La guardiana del bosque lo convirtió en serpiente y rompió su forma humana en cinco fragmentos, escondidos en cinco tierras. En cada una crece una Fruta del Origen, pero solo brota si le ofreces lo que esa tierra guarda. Cada fruta te devuelve un pedazo de tu cuerpo y un recuerdo de tu vida. Los recuerdos llegan desordenados. Y la serpiente que llevas dentro no piensa dejarte ir.</p>
     </div>
     <figure class="mirror reveal" id="mirror" style="--d:120ms;margin:0">
-      <svg viewBox="0 0 300 380" role="img" aria-label="Un espejo ovalado de piedra que refleja la silueta de una serpiente. Cada pocos segundos, por un instante, aparece la silueta de un humano.">
+      <svg viewBox="0 0 300 380" role="img" aria-label="Un espejo ovalado de piedra. En él se ve una serpiente que, por turnos, se transforma en una mujer y en un hombre; sus ojos pasan de serpiente a humanos al parpadear, y luego vuelven a ser serpiente.">
         <defs>
           <clipPath id="mclip"><ellipse cx="150" cy="190" rx="118" ry="158"/></clipPath>
           <radialGradient id="mbg" cx="50%" cy="40%" r="70%"><stop offset="0" stop-color="#1e3a2d"/><stop offset="1" stop-color="#08110d"/></radialGradient>
+          <linearGradient id="msheen" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".12"/><stop offset=".45" stop-color="#fff" stop-opacity=".03"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+          <!-- máscaras del barrido: la persona sube desde abajo y la serpiente se retira (y al revés) -->
+          <linearGradient id="gH" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="380"><stop id="hs0" offset="1" stop-color="#000"/><stop id="hs1" offset="1" stop-color="#fff"/></linearGradient>
+          <linearGradient id="gS" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="380"><stop id="ss0" offset="1" stop-color="#fff"/><stop id="ss1" offset="1" stop-color="#000"/></linearGradient>
+          <mask id="maskH" maskUnits="userSpaceOnUse" x="0" y="0" width="300" height="380"><rect width="300" height="380" fill="url(#gH)"/></mask>
+          <mask id="maskS" maskUnits="userSpaceOnUse" x="0" y="0" width="300" height="380"><rect width="300" height="380" fill="url(#gS)"/></mask>
+          <linearGradient id="gEdge" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f2b33d" stop-opacity="0"/><stop offset=".5" stop-color="#f2b33d" stop-opacity=".5"/><stop offset="1" stop-color="#f2b33d" stop-opacity="0"/></linearGradient>
+          <filter id="warp" x="-10%" y="-10%" width="120%" height="120%">
+            <feTurbulence id="warpT" type="fractalNoise" baseFrequency="0.012 0.03" numOctaves="2" seed="3" result="n"/>
+            <feDisplacementMap id="warpD" in="SourceGraphic" in2="n" scale="0" xChannelSelector="R" yChannelSelector="G"/>
+          </filter>
         </defs>
         <ellipse cx="150" cy="190" rx="134" ry="174" fill="#26332c" stroke="#3a4c41" stroke-width="4"/>
         <ellipse cx="150" cy="190" rx="124" ry="164" fill="none" stroke="#f2b33d" stroke-opacity=".55" stroke-width="3"/>
         <g clip-path="url(#mclip)">
           <rect width="300" height="380" fill="url(#mbg)"/>
-          <g class="snake-fig">
-            <path d="M80 320C60 250 235 262 222 196S92 160 150 96" fill="none" stroke="#0a150f" stroke-width="40" stroke-linecap="round" transform="translate(6 7)" opacity=".6"/>
-            <path d="M80 320C60 250 235 262 222 196S92 160 150 96" fill="none" stroke="#2a8650" stroke-width="40" stroke-linecap="round"/>
-            <path d="M80 320C60 250 235 262 222 196S92 160 150 96" fill="none" stroke="#3fae6a" stroke-width="30" stroke-linecap="round"/>
-            <circle cx="150" cy="96" r="22" fill="#5fd58a"/>
-            <circle cx="142" cy="92" r="4" fill="#0b1410"/><circle cx="158" cy="92" r="4" fill="#0b1410"/>
+          <g id="figs">
+            <g id="snakeLayer" mask="url(#maskS)">
+              <g id="mirrorSnake"><path id="mpath" d="M80 330C60 255 235 265 222 196S92 160 150 108" fill="none" stroke="none"/></g>
+            </g>
+            <g id="womanLayer" mask="url(#maskH)" display="none"></g>
+            <g id="manLayer" mask="url(#maskH)" display="none"></g>
           </g>
-          <g class="human-fig" fill="#efe6d2">
-            <circle cx="150" cy="118" r="30"/>
-            <path d="M92 330C92 235 108 180 150 180s58 55 58 150z"/>
-          </g>
+          <rect id="edge" x="0" y="450" width="300" height="70" fill="url(#gEdge)" opacity="0" pointer-events="none"/>
+          <!-- reflejo de cristal -->
+          <path d="M10 20 190 0 70 380H10z" fill="url(#msheen)" pointer-events="none"/>
         </g>
       </svg>
       <figcaption>Cada tanto, el espejo te recuerda quién eras.</figcaption>
@@ -298,7 +315,7 @@
         <li><a href="#" data-todo="itch">Página en itch.io</a></li>
       </ul>
     </div>
-    <svg class="coil" id="coil" viewBox="0 0 110 110" role="img" aria-label="Una pequeña serpiente de bloques que se enrolla"></svg>
+    <svg class="coil" id="coil" viewBox="-18 -10 166 150" role="img" aria-label="Una serpiente que se enrolla sobre sí misma"></svg>
   </div>
 </footer>
 
@@ -594,14 +611,176 @@ const snakeSys = (() => {
   setupCanvas(hero, combo);
 })();
 
-/* ---------- Espejo: glitch breve ---------- */
-(() => {
-  const m = $('#mirror');
-  setInterval(() => {
-    if (reduced) return;
-    m.classList.add('glitch');
-    setTimeout(() => m.classList.remove('glitch'), 650);
-  }, 5200);
+/* ---------- Serpiente realista en SVG (espejo y footer) ---------- */
+function buildRealSnake(g, path, o){
+  const NS = 'http://www.w3.org/2000/svg', len = path.getTotalLength(), N = o.N, HR = o.HR, TR = o.TR || 3;
+  const mk = (name, attrs, parent) => { const e = document.createElementNS(NS, name); for (const k in attrs) e.setAttribute(k, attrs[k]); (parent || g).appendChild(e); return e; };
+  const f2 = v => v.toFixed(2), pts = [];
+  for (let i = 0; i <= N; i++){ const p = path.getPointAtLength(len * i / N); pts.push({ x: p.x, y: p.y, t: i / N }); } // i=0 cola, i=N cabeza
+  pts.forEach((p, i) => {
+    const a = pts[Math.max(0, i - 1)], b = pts[Math.min(N, i + 1)];
+    p.a = Math.atan2(b.y - a.y, b.x - a.x);
+    p.r = TR + (HR - TR) * Math.min(1, Math.pow(p.t, .72) * 1.04);
+  });
+  const sh = mk('g', { fill: 'rgba(0,0,0,.38)' });
+  pts.forEach(p => mk('circle', { cx: f2(p.x + o.sx), cy: f2(p.y + o.sy), r: f2(p.r) }, sh));
+  pts.forEach(p => mk('circle', { cx: f2(p.x), cy: f2(p.y), r: f2(p.r), fill: 'url(#mscale)' }));
+  pts.forEach((p, i) => {
+    if (p.r < HR * .28) return;
+    const a1 = p.a + Math.PI - .95, a2 = p.a + Math.PI + .95, rr = p.r * .62;
+    mk('path', { d: `M${f2(p.x + Math.cos(a1) * rr)} ${f2(p.y + Math.sin(a1) * rr)}A${f2(rr)} ${f2(rr)} 0 0 1 ${f2(p.x + Math.cos(a2) * rr)} ${f2(p.y + Math.sin(a2) * rr)}`, fill: 'none', stroke: 'rgba(5,30,16,.25)', 'stroke-width': 1 });
+    if (i % 4 === 0 && p.r > HR * .36)
+      mk('ellipse', { cx: f2(p.x), cy: f2(p.y), rx: f2(p.r * .62), ry: f2(p.r * .48), transform: `rotate(${(p.a * 180 / Math.PI).toFixed(1)} ${f2(p.x)} ${f2(p.y)})`, fill: 'rgba(8,36,21,.6)', stroke: 'rgba(232,200,120,.35)', 'stroke-width': 1 });
+  });
+  const h = pts[N], rx = HR * 1.55, ry = HR * 1.12;
+  const hg = mk('g', { transform: `translate(${f2(h.x)} ${f2(h.y)}) rotate(${(h.a * 180 / Math.PI).toFixed(1)})` });
+  mk('ellipse', { cx: HR * .25, cy: HR * .42, rx, ry, fill: 'rgba(0,0,0,.38)' }, hg);
+  const tg = mk('g', { class: 'tongue' }, hg);
+  mk('path', { d: `M${f2(rx * .85)} 0H${f2(rx * .85 + HR * 2.2)}M${f2(rx * .85 + HR * 2.2)} 0l${f2(HR * .5)} ${f2(-HR * .3)}M${f2(rx * .85 + HR * 2.2)} 0l${f2(HR * .5)} ${f2(HR * .3)}`, fill: 'none', stroke: '#d8433a', 'stroke-width': Math.max(1.4, HR * .11), 'stroke-linecap': 'round' }, tg);
+  mk('ellipse', { cx: 0, cy: 0, rx, ry, fill: 'url(#mhead)', stroke: 'rgba(242,179,61,.45)', 'stroke-width': 1 }, hg);
+  mk('ellipse', { cx: -rx * .15, cy: 0, rx: rx * .38, ry: ry * .42, fill: 'rgba(10,42,25,.5)' }, hg);
+  [-1, 1].forEach(sg => {
+    const ex = rx * .28, ey = sg * ry * .62;
+    mk('circle', { cx: ex, cy: ey, r: HR * .31, fill: '#f2c14e' }, hg);
+    mk('ellipse', { cx: ex, cy: ey, rx: HR * .24, ry: HR * .07, fill: '#0b1410' }, hg);
+    mk('circle', { cx: ex - HR * .09, cy: ey - HR * .1, r: HR * .06, fill: 'rgba(255,255,255,.75)' }, hg);
+    mk('circle', { cx: rx * .8, cy: sg * ry * .26, r: HR * .07, fill: 'rgba(6,22,13,.85)' }, hg);
+  });
+}
+
+/* ---------- Retratos realistas (dibujados con código) ---------- */
+const PEOPLE = {
+  w: { female: true,  skin: ['#e2ad88', '#c98e69', '#9a6144'], hair: ['#150b08', '#3b2316'], lip: ['#a9433f', '#c25c56'],
+       iris: ['#a07040', '#5a3419', '#26130a'], cloth: ['#b23a2a', '#6e1d14'] },
+  m: { female: false, skin: ['#d79c76', '#b97a55', '#8a5538'], hair: ['#1a0f0a', '#33200f'], lip: ['#8c4f40', '#a2634f'],
+       iris: ['#8aa36a', '#4b6b3f', '#1e2e1b'], cloth: ['#6b5a37', '#3e3320'] }
+};
+function personSVG(id, c){
+  const f = c.female, [sl, sb, ss] = c.skin, [hd, hm] = c.hair, [i0, i1, i2] = c.iris, [c0, c1] = c.cloth;
+  const face = f ? 'M110 136C110 100 128 88 150 88C172 88 190 100 190 136C190 168 176 198 150 206C124 198 110 168 110 136Z'
+                 : 'M107 134C107 98 127 86 150 86C173 86 193 98 193 134C193 170 178 204 150 207C122 204 107 170 107 134Z';
+  const eyeL = 'M120 138C126 130 138 130 142 138C138 145 126 146 120 138Z', eyeR = 'M158 138C162 130 174 130 180 138C174 146 162 145 158 138Z';
+  const torso = f ? 'M58 420C58 322 86 298 126 286L174 286C214 298 242 322 242 420Z' : 'M44 420C44 320 78 298 122 286L178 286C222 298 256 320 256 420Z';
+  const eye = (cx, clip, x0, x1, lashPath, wing) => `
+    <g clip-path="url(#${id}${clip})">
+      <ellipse cx="${cx}" cy="138" rx="13" ry="8" fill="#f1ebe3"/>
+      <g class="irisH"><circle cx="${cx}" cy="138" r="6.3" fill="url(#${id}ih)"/><circle cx="${cx}" cy="138" r="2.7" fill="#0b0705"/><circle cx="${cx - 2}" cy="136" r="1.3" fill="#fff" fill-opacity=".85"/></g>
+      <g class="irisS" opacity="0"><circle cx="${cx}" cy="138" r="6.3" fill="url(#${id}is)"/><ellipse cx="${cx}" cy="138" rx="1.5" ry="5.6" fill="#0b0705"/><circle cx="${cx - 2}" cy="136" r="1.1" fill="#fff" fill-opacity=".8"/></g>
+      <ellipse cx="${cx}" cy="132" rx="12" ry="4" fill="rgba(0,0,0,.2)"/>
+      <g class="lid" transform="translate(0 -17)"><rect x="${x0}" y="104" width="${x1 - x0}" height="42" fill="url(#${id}f)"/><path d="${lashPath}" stroke="${hd}" stroke-width="1.6" fill="none" stroke-linecap="round"/></g>
+    </g>
+    <path d="${wing}" stroke="${hd}" stroke-width="${f ? 2.1 : 1.3}" fill="none" stroke-linecap="round"/>`;
+  let weave = '';
+  for (let x = f ? 70 : 56; x < (f ? 232 : 246); x += 12) weave += `<rect x="${x}" y="344" width="6" height="6" fill="#f2b33d" transform="rotate(45 ${x + 3} 347)"/>`;
+  return `
+  <defs>
+    <radialGradient id="${id}f" gradientUnits="userSpaceOnUse" cx="138" cy="124" r="100"><stop offset="0" stop-color="${sl}"/><stop offset=".55" stop-color="${sb}"/><stop offset="1" stop-color="${ss}"/></radialGradient>
+    <linearGradient id="${id}n" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${ss}"/><stop offset=".55" stop-color="${sb}"/><stop offset="1" stop-color="${sb}"/></linearGradient>
+    <linearGradient id="${id}e" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${ss}" stop-opacity=".5"/><stop offset=".24" stop-color="${ss}" stop-opacity="0"/><stop offset=".76" stop-color="${ss}" stop-opacity="0"/><stop offset="1" stop-color="${ss}" stop-opacity=".55"/></linearGradient>
+    <linearGradient id="${id}h" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${hd}"/><stop offset=".35" stop-color="${hm}"/><stop offset=".7" stop-color="${hd}"/><stop offset="1" stop-color="${hd}"/></linearGradient>
+    <linearGradient id="${id}c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c0}"/><stop offset="1" stop-color="${c1}"/></linearGradient>
+    <radialGradient id="${id}ih" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="${i0}"/><stop offset=".6" stop-color="${i1}"/><stop offset="1" stop-color="${i2}"/></radialGradient>
+    <radialGradient id="${id}is" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#ffe58a"/><stop offset=".6" stop-color="#e0a82a"/><stop offset="1" stop-color="#8a5b0a"/></radialGradient>
+    <clipPath id="${id}fc"><path d="${face}"/></clipPath>
+    <clipPath id="${id}cl"><path d="${eyeL}"/></clipPath>
+    <clipPath id="${id}cr"><path d="${eyeR}"/></clipPath>
+    <clipPath id="${id}tc"><path d="${torso}"/></clipPath>
+    <radialGradient id="${id}b"><stop offset="0" stop-color="#c8504a" stop-opacity="${f ? .3 : .13}"/><stop offset="1" stop-color="#c8504a" stop-opacity="0"/></radialGradient>
+    <radialGradient id="${id}s"><stop offset="0" stop-color="#1c0e07" stop-opacity=".2"/><stop offset=".7" stop-color="#1c0e07" stop-opacity=".08"/><stop offset="1" stop-color="#1c0e07" stop-opacity="0"/></radialGradient>
+  </defs>
+  <g class="breath">
+    ${f ? `<path d="M103 128C94 82 118 54 150 54C182 54 206 82 197 128C208 178 216 240 208 304L92 304C84 240 92 178 103 128Z" fill="url(#${id}h)"/>` : ''}
+    <g transform="translate(0 -38)"><!-- hombros más cerca de la barbilla: proporción natural -->
+    <path d="${torso}" fill="url(#${id}c)"/>
+    <g clip-path="url(#${id}tc)">
+      <rect x="40" y="330" width="220" height="5" fill="#f2b33d"/><rect x="40" y="337" width="220" height="3" fill="#3fae6a"/>${weave}<rect x="40" y="353" width="220" height="3" fill="#3fae6a"/><rect x="40" y="358" width="220" height="5" fill="#f2b33d"/>
+    </g>
+    <path d="M127 192V244C127 266 118 276 104 288L196 288C182 276 173 266 173 244V192Z" fill="url(#${id}n)"/>
+    ${f ? `<path d="M112 290C130 308 170 308 188 290" fill="none" stroke="#f2b33d" stroke-width="3.5"/><path d="M115 295C132 311 168 311 185 295" fill="none" stroke="#3fae6a" stroke-width="2"/>`
+        : `<path d="M118 286L150 318L100 304Z" fill="#4a3e24" stroke="#f2b33d" stroke-width="1.5"/><path d="M182 286L150 318L200 304Z" fill="#4a3e24" stroke="#f2b33d" stroke-width="1.5"/>`}
+    </g>
+    <ellipse cx="109" cy="148" rx="6" ry="11" fill="${sb}"/><ellipse cx="191" cy="148" rx="6" ry="11" fill="${sb}"/>
+    <path d="${face}" fill="url(#${id}f)"/>
+    <g clip-path="url(#${id}fc)">
+      <rect x="100" y="80" width="100" height="135" fill="url(#${id}e)"/>
+      <ellipse cx="150" cy="208" rx="38" ry="15" fill="${ss}" opacity=".35"/>
+      ${f ? '' : '<ellipse cx="150" cy="196" rx="40" ry="24" fill="url(#' + id + 's)"/>'}
+    </g>
+    <ellipse cx="124" cy="168" rx="17" ry="12" fill="url(#${id}b)"/><ellipse cx="176" cy="168" rx="17" ry="12" fill="url(#${id}b)"/>
+    ${eye(131, 'cl', 116, 148, 'M119 143.5Q131 147.5 143 143.5', 'M120 138C126 130 138 130 142 138' + (f ? 'M120 138L115.5 134.5' : ''))}
+    ${eye(169, 'cr', 152, 184, 'M157 143.5Q169 147.5 181 143.5', 'M158 138C162 130 174 130 180 138' + (f ? 'M180 138L184.5 134.5' : ''))}
+    <path d="M119 132C127 123 138 124 143 132" fill="none" stroke="${ss}" stroke-opacity=".55" stroke-width="1.2"/><path d="M157 132C162 124 173 123 181 132" fill="none" stroke="${ss}" stroke-opacity=".55" stroke-width="1.2"/>
+    <path d="${f ? 'M118 123C124 115 136 114 143 119' : 'M117 124C125 118 136 117 143 121'}" fill="none" stroke="${hd}" stroke-width="${f ? 2.2 : 3.8}" stroke-linecap="round"/>
+    <path d="${f ? 'M157 119C164 114 176 115 182 123' : 'M157 121C164 117 175 118 183 124'}" fill="none" stroke="${hd}" stroke-width="${f ? 2.2 : 3.8}" stroke-linecap="round"/>
+    <path d="M145 142C143 152 142 160 140 165" fill="none" stroke="${ss}" stroke-opacity=".45" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M151 142V160" fill="none" stroke="${sl}" stroke-opacity=".5" stroke-width="2.4" stroke-linecap="round"/>
+    <ellipse cx="150" cy="165" rx="4" ry="2.6" fill="${sl}" opacity=".35"/>
+    <ellipse cx="144" cy="169" rx="3" ry="1.6" fill="rgba(40,15,10,.55)"/><ellipse cx="156" cy="169" rx="3" ry="1.6" fill="rgba(40,15,10,.55)"/>
+    <path d="M139 169C145 173 155 173 161 169" fill="none" stroke="${ss}" stroke-opacity=".5" stroke-width="1.4"/>
+    <path d="M138 183C143 178 148 178 150 180C152 178 157 178 162 183C156 185 144 185 138 183Z" fill="${c.lip[0]}"/>
+    <path d="M139 183.5C146 192 154 192 161 183.5C155 186 145 186 139 183.5Z" fill="${c.lip[1]}"/>
+    <path d="M138 183C146 186 154 186 162 183" fill="none" stroke="rgba(40,10,8,.6)" stroke-width="1"/>
+    <ellipse cx="150" cy="188.5" rx="4.5" ry="1.2" fill="#fff" opacity=".22"/>
+    ${f ? `<path d="M106 136C101 90 122 64 150 64C178 64 199 90 194 136C192 112 182 96 166 88C160 100 150 104 142 100C124 100 110 116 106 136Z" fill="url(#${id}h)"/>
+           <path d="M104 132C98 180 96 240 98 290C106 250 110 190 112 150Z" fill="url(#${id}h)"/><path d="M196 132C202 180 204 240 202 290C194 250 190 190 188 150Z" fill="url(#${id}h)"/>
+           <path d="M122 80C136 68 164 68 178 80" fill="none" stroke="${hm}" stroke-width="3" stroke-linecap="round" opacity=".7"/>
+           <circle cx="109" cy="160" r="2.6" fill="#f2b33d"/><circle cx="191" cy="160" r="2.6" fill="#f2b33d"/>`
+        : `<path d="M106 134C100 88 122 62 150 62C178 62 200 88 194 134C192 114 186 100 172 94C160 90 140 90 128 94C114 100 108 114 106 134Z" fill="url(#${id}h)"/>
+           <path d="M108 134L112 134L112 156L108 150Z" fill="${hd}"/><path d="M192 134L188 134L188 156L192 150Z" fill="${hd}"/>
+           <path d="M124 76C138 66 162 66 176 76" fill="none" stroke="${hm}" stroke-width="3" stroke-linecap="round" opacity=".7"/>`}
+  </g>`;
+}
+
+(function mirrorShow(){
+  const mir = $('#mirror'); if (!mir) return;
+  // La serpiente de base
+  buildRealSnake($('#mirrorSnake'), $('#mpath'), { N: 110, HR: 17, sx: 6, sy: 8 });
+  if (reduced) return; // con movimiento reducido solo queda la serpiente quieta
+  const figs = $('#figs'), edge = $('#edge'), wT = $('#warpT'), wD = $('#warpD');
+  const stops = { h0: $('#hs0'), h1: $('#hs1'), s0: $('#ss0'), s1: $('#ss1') };
+  const P = {};
+  [['w', $('#womanLayer')], ['m', $('#manLayer')]].forEach(([k, el]) => {
+    el.innerHTML = personSVG(k, PEOPLE[k]);
+    P[k] = { el, lids: $$('.lid', el), iH: $$('.irisH', el), iS: $$('.irisS', el), breath: $('.breath', el) };
+  });
+
+  // Línea de tiempo de un ciclo (ms): serpiente → persona (ojos de serpiente) → parpadeo → ojos humanos → parpadeo → ojos de serpiente → serpiente
+  const A = 3000, M = 2300, C = 10400, E = 14200, BLINKS = [6000, 7800, 9600];
+  const ease = x => x * x * (3 - 2 * x), clamp = x => Math.max(0, Math.min(1, x));
+  const pOf = t => t < A ? 0 : t < A + M ? ease((t - A) / M) : t < C ? 1 : t < C + M ? 1 - ease((t - C) / M) : 0;
+  const blink = (t, c) => { const d = Math.abs(t - c) / 220; return d < 1 ? .5 + .5 * Math.cos(Math.PI * d) : 0; };
+  const eyesOf = t => (t < BLINKS[0] || t >= BLINKS[2]) ? 1 : 0; // 1 = ojos de serpiente
+
+  function setP(p, now){
+    const soft = 70, yl = (380 + 2 * soft) * (1 - p) - soft, a = clamp((yl - soft) / 380), b = clamp((yl + soft) / 380);
+    stops.h0.setAttribute('offset', a); stops.h1.setAttribute('offset', b); stops.s0.setAttribute('offset', a); stops.s1.setAttribute('offset', b);
+    edge.setAttribute('y', yl - 35); edge.setAttribute('opacity', (Math.sin(Math.PI * p) * .9).toFixed(3));
+    if (p > .002 && p < .998){
+      figs.setAttribute('filter', 'url(#warp)');
+      wD.setAttribute('scale', (26 * Math.sin(Math.PI * p)).toFixed(2));
+      wT.setAttribute('baseFrequency', `${(.012 + .004 * Math.sin(now / 700)).toFixed(4)} 0.03`);
+    } else figs.removeAttribute('filter');
+  }
+
+  let visible = false, cur = '', last = { p: -1, b: -1, e: -1 };
+  const t0 = performance.now();
+  new IntersectionObserver(es => { visible = es[0].isIntersecting; }, { threshold: .1 }).observe(mir);
+  function frame(now){
+    requestAnimationFrame(frame);
+    if (!visible) return;
+    const el = now - t0, cyc = Math.floor(el / E), t = el - cyc * E, who = cyc % 2 ? 'm' : 'w';
+    if (who !== cur){ cur = who; P.w.el.setAttribute('display', who === 'w' ? 'inline' : 'none'); P.m.el.setAttribute('display', who === 'm' ? 'inline' : 'none'); }
+    const p = pOf(t), b = Math.max(blink(t, BLINKS[0]), blink(t, BLINKS[1]), blink(t, BLINKS[2])), e = eyesOf(t);
+    if (p !== last.p || (p > 0 && p < 1)){ setP(p, now); last.p = p; }
+    if (b !== last.b || e !== last.e){
+      const k = P[who], ty = (-17 * (1 - b)).toFixed(2);
+      k.lids.forEach(l => l.setAttribute('transform', `translate(0 ${ty})`));
+      k.iH.forEach(n => n.setAttribute('opacity', 1 - e)); k.iS.forEach(n => n.setAttribute('opacity', e));
+      last.b = b; last.e = e;
+    }
+    if (p > 0) P[who].breath.setAttribute('transform', `translate(0 ${(1.4 * Math.sin(now / 950)).toFixed(2)})`);
+  }
+  requestAnimationFrame(frame);
 })();
 
 /* ---------- Aparición al hacer scroll ---------- */
@@ -615,23 +794,30 @@ const snakeSys = (() => {
   els.forEach(e => io.observe(e));
 })();
 
-/* ---------- Serpiente de bloques que se enrolla (footer) ---------- */
+/* ---------- Serpiente realista enrollada (footer) ---------- */
 (() => {
-  const svg = $('#coil'); const NS = 'http://www.w3.org/2000/svg';
-  const path = [[0,0],[1,0],[2,0],[3,0],[3,1],[3,2],[3,3],[2,3],[1,3],[0,3],[0,2],[0,1],[1,1],[2,1],[2,2],[1,2]];
-  const S = 22, off = 8;
-  const rect = (g, x, y, w, h, f) => { const r = document.createElementNS(NS, 'rect'); r.setAttribute('x', x); r.setAttribute('y', y); r.setAttribute('width', w); r.setAttribute('height', h); r.setAttribute('fill', f); g.appendChild(r); };
-  path.forEach(([cx, cy], i) => {
-    const g = document.createElementNS(NS, 'g'); g.setAttribute('class', 'cell'); g.style.setProperty('--i', i);
-    const x = off + cx * S, y = off + cy * S, s = S - 3, base = i === path.length - 1 ? '#6fe095' : (i % 2 ? '#3fae6a' : '#37a05f');
-    rect(g, x + 3, y + 3, s, s, 'rgba(0,0,0,.4)');
-    rect(g, x, y, s, s, shade(base, -.4));
-    rect(g, x, y, s * .88, s * .84, base);
-    rect(g, x, y, s * .88, s * .17, 'rgba(255,255,255,.3)');
-    if (i === path.length - 1){ rect(g, x + 5, y + 6, 3, 3, '#0b1410'); rect(g, x + 12, y + 6, 3, 3, '#0b1410'); }
-    svg.appendChild(g);
-  });
-  new IntersectionObserver((es, o) => { if (es[0].isIntersecting){ svg.classList.add('in'); o.disconnect(); } }, { threshold: .4 }).observe(svg);
+  const svg = $('#coil'); if (!svg) return;
+  const NS = 'http://www.w3.org/2000/svg', TAU = Math.PI * 2, cx = 65, cy = 66, tail = 9, gap = 17.5, turns = 2.5, steps = 240;
+  let d = '';
+  for (let i = 0; i <= steps; i++){
+    const th = i / steps * turns * TAU, r = tail + gap * th / TAU;
+    d += (i ? 'L' : 'M') + (cx + r * Math.cos(th)).toFixed(2) + ' ' + (cy + r * Math.sin(th)).toFixed(2);
+  }
+  const mk = (name, attrs, parent) => { const e = document.createElementNS(NS, name); for (const k in attrs) e.setAttribute(k, attrs[k]); (parent || svg).appendChild(e); return e; };
+  const defs = mk('defs', {}), mask = mk('mask', { id: 'cmask', maskUnits: 'userSpaceOnUse', x: -30, y: -30, width: 200, height: 200 }, defs);
+  const guide = mk('path', { d, fill: 'none', stroke: 'none' });
+  const len = guide.getTotalLength();
+  const dash = mk('path', { d, fill: 'none', stroke: '#fff', 'stroke-width': 30, 'stroke-linecap': 'round', 'stroke-dasharray': len }, mask);
+  dash.style.strokeDashoffset = len;
+  const body = mk('g', { mask: 'url(#cmask)' });
+  buildRealSnake(body, guide, { N: 150, HR: 8.5, TR: 2.4, sx: 3, sy: 4 });
+  new IntersectionObserver((es, o) => {
+    if (es[0].isIntersecting){
+      dash.style.transition = 'stroke-dashoffset 2.8s ease-in-out'; dash.style.strokeDashoffset = 0; o.disconnect();
+      // al terminar el enrollado se quita la máscara para que la cabeza y la lengua no se recorten
+      setTimeout(() => body.removeAttribute('mask'), reduced ? 0 : 2900);
+    }
+  }, { threshold: .4 }).observe(svg);
 })();
 
 /* ---------- Sonido (opcional, apagado por defecto) ---------- */

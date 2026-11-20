@@ -111,10 +111,10 @@ section{position:relative}
 .story p.body{margin-top:var(--s4);color:var(--muted);font-size:1.125rem;max-width:58ch}
 .mirror{justify-self:center;width:min(100%,320px)}
 .mirror svg{width:100%;height:auto;overflow:visible;filter:drop-shadow(8px 10px 0 rgba(0,0,0,.4))}
-.mirror .snake-fig,.mirror .human-fig{transition:opacity .22s ease, transform .22s ease;transform-origin:150px 190px}
-.mirror .human-fig{opacity:0}
-.mirror.glitch .snake-fig{opacity:.12}
-.mirror.glitch .human-fig{opacity:.9;transform:translateX(4px) skewX(-3deg)}
+/* El barrido serpiente ⇄ persona, el parpadeo y la distorsión líquida los maneja el JS (mirrorShow) */
+/* la lengua sale y entra suavemente (sin destellos) */
+.tongue{transform-box:fill-box;transform-origin:0 50%;transform:scaleX(0);animation:flick 3.6s ease-in-out infinite}
+@keyframes flick{0%,78%,100%{transform:scaleX(0)}86%{transform:scaleX(1)}94%{transform:scaleX(0)}}
 .mirror figcaption{margin-top:var(--s3);text-align:center;color:var(--muted);font-size:.875rem}
 
 /* ---------- Cómo se juega ---------- */
@@ -208,13 +208,8 @@ footer .studio{font-family:var(--font-display);font-size:1.25rem;color:var(--gol
 footer p{color:var(--muted);font-size:.95rem;margin-top:var(--s2)}
 footer ul{list-style:none;padding:0;margin:var(--s3) 0 0;display:flex;flex-wrap:wrap;gap:var(--s2) var(--s4)}
 footer a{display:inline-flex;align-items:center;min-height:44px}
-.coil{width:110px;height:110px;justify-self:start}
+.coil{width:210px;height:auto;justify-self:start;overflow:visible;filter:drop-shadow(4px 5px 0 rgba(0,0,0,.35))}
 @media(min-width:760px){.coil{justify-self:end}}
-.coil .cell{opacity:1}
-.js .coil .cell{opacity:0}
-.coil.in .cell{animation:coilIn .35s var(--ease) forwards;animation-delay:calc(var(--i) * 90ms)}
-@keyframes coilIn{from{opacity:0;transform:scale(.4)}to{opacity:1;transform:scale(1)}}
-.coil .cell{transform-box:fill-box;transform-origin:center}
 
 /* ---------- Reveal ---------- */
 .js .reveal{opacity:0;transform:translateY(28px);transition:opacity .8s var(--ease),transform .8s var(--ease);transition-delay:var(--d,0ms)}
@@ -236,5 +231,4 @@ footer a{display:inline-flex;align-items:center;min-height:44px}
   html{scroll-behavior:auto}
   *,*::before,*::after{animation:none !important;transition:none !important}
   .js .reveal{opacity:1;transform:none}
-  .js .coil .cell{opacity:1}
 }
