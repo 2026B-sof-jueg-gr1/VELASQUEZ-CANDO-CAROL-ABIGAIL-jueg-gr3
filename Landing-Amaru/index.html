@@ -425,84 +425,157 @@ $$('.world canvas').forEach(cv => {
 const hero = $('#heroCanvas');
 const flies = particleSystem('firefly', 46, palettes.firefly);
 const snakeSys = (() => {
-  let cols, rows, ox, oy, cell, snake, dir, fruit, acc = 0, t = 0, maxLen = 12, grow = 0;
-  const STEP = 120;
-  const wrapX = x => (x + cols) % cols, wrapY = y => (y + rows) % rows;
-  const dist = (a, b) => {
-    let dx = Math.abs(a.x - b.x), dy = Math.abs(a.y - b.y);
-    return Math.min(dx, cols - dx) + Math.min(dy, rows - dy);
-  };
-  const occupied = (x, y) => snake.some(s => s.x === x && s.y === y);
+  // Serpiente realista: cuerpo continuo que sigue el rastro de la cabeza, con ondulación, escamas y lengua
+  const TAU = Math.PI * 2;
+  let R, speed, turn, L, Lmax, pts, hx, hy, ang, fruit, t = 0;
+  const angDiff = (a, b) => Math.atan2(Math.sin(b - a), Math.cos(b - a));
+
   function placeFruit(){
-    for (let i = 0; i < 40; i++){
-      const f = { x: (Math.random() * cols) | 0, y: (Math.random() * rows) | 0 };
-      if (!occupied(f.x, f.y) && dist(f, snake[0]) > 5){ fruit = f; return; }
+    const hr = hero.parentElement.getBoundingClientRect(), r = $('.hero__inner').getBoundingClientRect();
+    const box = { l: r.left - hr.left - 24, r: r.right - hr.left + 24, t: r.top - hr.top - 12, b: r.bottom - hr.top + 12 };
+    for (let i = 0; i < 50; i++){
+      const x = rand(46, sys.w - 46), y = rand(46, sys.h - 90);
+      const inside = x > box.l && x < box.r && y > box.t && y < box.b;
+      if (!inside && Math.hypot(x - hx, y - hy) > 160){ fruit = { x, y }; return; }
     }
-    fruit = { x: (snake[0].x + 6) % cols, y: snake[0].y };
+    fruit = { x: rand(46, sys.w - 46), y: rand(46, sys.h - 90) };
   }
+
+  function move(dt){
+    const dx = fruit.x - hx, dy = fruit.y - hy, m = 36;
+    let want = Math.atan2(dy, dx);
+    if (hx < m || hx > sys.w - m || hy < m || hy > sys.h - m) want = Math.atan2(sys.h / 2 - hy, sys.w / 2 - hx);
+    const maxTurn = turn * dt / 1000, d = angDiff(ang, want);
+    ang += Math.max(-maxTurn, Math.min(maxTurn, d));
+    hx += Math.cos(ang) * speed * dt / 1000; hy += Math.sin(ang) * speed * dt / 1000;
+    pts.push({ x: hx, y: hy });
+    // recortar el rastro a lo que mide el cuerpo
+    let acc = 0, i = pts.length - 1;
+    for (; i > 0; i--){ acc += Math.hypot(pts[i].x - pts[i-1].x, pts[i].y - pts[i-1].y); if (acc > L + R * 3) break; }
+    if (i > 0) pts.splice(0, i);
+    if (Math.hypot(dx, dy) < R * 2.1){ L = Math.min(Lmax, L + R * 2.2); placeFruit(); }
+  }
+
+  function sample(sp){
+    const out = [{ x: pts[pts.length-1].x, y: pts[pts.length-1].y, s: 0 }];
+    let prev = pts[pts.length-1], acc = 0, next = sp;
+    for (let i = pts.length - 2; i >= 0 && next <= L; i--){
+      const p = pts[i], seg = Math.hypot(prev.x - p.x, prev.y - p.y);
+      while (seg > 0 && acc + seg >= next && next <= L){
+        const f = (next - acc) / seg;
+        out.push({ x: prev.x + (p.x - prev.x) * f, y: prev.y + (p.y - prev.y) * f, s: next }); next += sp;
+      }
+      acc += seg; prev = p;
+    }
+    return out;
+  }
+
+  function drawFruit(c){
+    const r = R * .95, pulse = 1 + .1 * Math.sin(t / 380), g0 = c.createRadialGradient(fruit.x, fruit.y, 0, fruit.x, fruit.y, r * 3.4 * pulse);
+    g0.addColorStop(0, 'rgba(242,179,61,.5)'); g0.addColorStop(1, 'rgba(242,179,61,0)');
+    c.fillStyle = g0; c.beginPath(); c.arc(fruit.x, fruit.y, r * 3.4 * pulse, 0, TAU); c.fill();
+    c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(fruit.x + r * .25, fruit.y + r * .4, r, r * .9, 0, 0, TAU); c.fill();
+    const g = c.createRadialGradient(fruit.x - r * .3, fruit.y - r * .35, r * .1, fruit.x, fruit.y, r);
+    g.addColorStop(0, '#ffe9a8'); g.addColorStop(.45, '#f2b33d'); g.addColorStop(1, '#b97f12');
+    c.fillStyle = g; c.beginPath(); c.arc(fruit.x, fruit.y, r, 0, TAU); c.fill();
+    c.fillStyle = '#3fae6a'; c.beginPath(); c.ellipse(fruit.x + r * .35, fruit.y - r * 1.0, r * .42, r * .2, -.7, 0, TAU); c.fill();
+    c.strokeStyle = '#5a3a0a'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(fruit.x, fruit.y - r * .8); c.lineTo(fruit.x + r * .1, fruit.y - r * 1.15); c.stroke();
+  }
+
+  function drawHead(c, x, y, a, r){
+    const rx = r * 1.55, ry = r * 1.12, phase = (t % 3400) / 3400, ext = phase < .16 ? Math.sin(phase / .16 * Math.PI) : 0;
+    c.save(); c.translate(x, y); c.rotate(a);
+    c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(r * .25, r * .42, rx, ry, 0, 0, TAU); c.fill();
+    if (ext > 0){ // lengua bífida (movimiento breve, sin destellos)
+      const len = r * 2.3 * ext, x0 = rx * .85;
+      c.strokeStyle = '#d8433a'; c.lineWidth = Math.max(1.6, r * .12); c.lineCap = 'round';
+      c.beginPath(); c.moveTo(x0, 0); c.lineTo(x0 + len, 0);
+      c.moveTo(x0 + len, 0); c.lineTo(x0 + len + r * .5, -r * .3); c.moveTo(x0 + len, 0); c.lineTo(x0 + len + r * .5, r * .3); c.stroke();
+    }
+    const g = c.createRadialGradient(-rx * .2, -ry * .45, 0, 0, 0, rx * 1.05);
+    g.addColorStop(0, '#74d695'); g.addColorStop(.55, '#2f8f55'); g.addColorStop(1, '#1b5636');
+    c.fillStyle = g; c.beginPath(); c.ellipse(0, 0, rx, ry, 0, 0, TAU); c.fill();
+    c.fillStyle = 'rgba(10,42,25,.5)'; c.beginPath(); c.ellipse(-rx * .15, 0, rx * .38, ry * .42, 0, 0, TAU); c.fill();
+    c.strokeStyle = 'rgba(242,179,61,.45)'; c.lineWidth = 1; c.stroke();
+    for (const sg of [-1, 1]){
+      const ex = rx * .28, ey = sg * ry * .62;
+      c.fillStyle = '#f2c14e'; c.beginPath(); c.arc(ex, ey, r * .31, 0, TAU); c.fill();
+      c.fillStyle = '#0b1410'; c.beginPath(); c.ellipse(ex, ey, r * .24, r * .07, 0, 0, TAU); c.fill();
+      c.fillStyle = 'rgba(255,255,255,.75)'; c.beginPath(); c.arc(ex - r * .09, ey - r * .1, r * .06, 0, TAU); c.fill();
+      c.fillStyle = 'rgba(6,22,13,.85)'; c.beginPath(); c.arc(rx * .8, sg * ry * .26, r * .07, 0, TAU); c.fill();
+    }
+    c.restore();
+  }
+
   const sys = {
     init(){
-      cell = sys.w < 600 ? 22 : 30;
-      cols = Math.max(10, Math.floor(sys.w / cell)); rows = Math.max(8, Math.floor(sys.h / cell));
-      ox = (sys.w - cols * cell) / 2; oy = (sys.h - rows * cell) / 2;
-      const sx = Math.floor(cols * .3), sy = Math.floor(rows * .75);
-      snake = Array.from({ length: 7 }, (_, i) => ({ x: wrapX(sx - i), y: sy }));
-      dir = { x: 1, y: 0 }; grow = 0; acc = 0;
+      R = sys.w < 600 ? 12 : 18; speed = sys.w < 600 ? 100 : 135; turn = 2.8; L = R * 20; Lmax = R * 38;
+      hx = sys.w * .18; hy = sys.h * .72; ang = -.25; pts = [{ x: hx, y: hy }]; t = 0;
       placeFruit();
+      for (let i = 0; i < 260; i++) move(16); // nace ya estirada
     },
-    update(dt){
-      t += dt; acc += dt;
-      while (acc >= STEP){ acc -= STEP; step(); }
-    },
+    update(dt){ t += dt; let r = dt; while (r > 0){ const d = Math.min(16, r); move(d); r -= d; } },
     draw(){
       const c = sys.ctx; c.clearRect(0, 0, sys.w, sys.h);
-      // fruta dorada con brillo suave
-      const px = ox + fruit.x * cell + cell / 2, py = oy + fruit.y * cell + cell / 2;
-      const pulse = 1 + .12 * Math.sin(t / 380);
-      const g = c.createRadialGradient(px, py, 0, px, py, cell * 2.4 * pulse);
-      g.addColorStop(0, 'rgba(242,179,61,.55)'); g.addColorStop(1, 'rgba(242,179,61,0)');
-      c.fillStyle = g; c.beginPath(); c.arc(px, py, cell * 2.4 * pulse, 0, 6.28); c.fill();
-      drawBlock(c, ox + fruit.x * cell + 2, oy + fruit.y * cell + 2, cell - 4, '#f2b33d');
-      // serpiente de bloques con relieve
-      for (let i = snake.length - 1; i >= 0; i--){
-        const s = snake[i];
-        const base = i === 0 ? '#6fe095' : (i % 2 ? '#3fae6a' : '#37a05f');
-        drawBlock(c, ox + s.x * cell + 2, oy + s.y * cell + 2, cell - 4, shade(base, Math.min(.0, -i * .012)));
+      drawFruit(c);
+      const sp = R * .32, arr = sample(sp), n = arr.length, stot = arr[n-1].s || 1;
+      // ondulación lateral que viaja de la cabeza a la cola
+      const base = arr.map(p => ({ x: p.x, y: p.y }));
+      for (let k = 1; k < n; k++){
+        const a = base[Math.max(0, k-1)], b = base[Math.min(n-1, k+1)];
+        let tx = a.x - b.x, ty = a.y - b.y; const l = Math.hypot(tx, ty) || 1; tx /= l; ty /= l;
+        const off = R * .55 * Math.sin(arr[k].s / (R * 3.4) - t * .005) * Math.min(1, arr[k].s / (R * 5));
+        arr[k].x = base[k].x - ty * off; arr[k].y = base[k].y + tx * off;
       }
-      const h = snake[0], hx = ox + h.x * cell, hy = oy + h.y * cell;
-      c.fillStyle = '#0b1410';
-      const e = cell * .12;
-      c.fillRect(hx + cell * .3, hy + cell * .3, e * 1.4, e * 1.4);
-      c.fillRect(hx + cell * .6, hy + cell * .3, e * 1.4, e * 1.4);
+      for (let k = 0; k < n; k++){
+        const a = arr[Math.max(0, k-1)], b = arr[Math.min(n-1, k+1)];
+        arr[k].a = Math.atan2(a.y - b.y, a.x - b.x);
+        const q = arr[k].s / stot;
+        arr[k].r = Math.max(R * .2, R * (.82 + .18 * Math.min(1, arr[k].s / (R * 3))) * (1 - .82 * Math.pow(q, 1.35)));
+      }
+      c.fillStyle = 'rgba(0,0,0,.32)';
+      for (let k = n - 1; k >= 1; k--){ c.beginPath(); c.arc(arr[k].x + R * .3, arr[k].y + R * .42, arr[k].r, 0, TAU); c.fill(); }
+      for (let k = n - 1; k >= 1; k--){
+        const p = arr[k], g = c.createRadialGradient(p.x - p.r * .3, p.y - p.r * .35, p.r * .1, p.x, p.y, p.r);
+        g.addColorStop(0, '#5fc382'); g.addColorStop(.6, '#2f8f55'); g.addColorStop(1, '#1d6040');
+        c.fillStyle = g; c.beginPath(); c.arc(p.x, p.y, p.r, 0, TAU); c.fill();
+      }
+      // escamas y manchas dorsales
+      for (let k = n - 1; k >= 1; k--){
+        const p = arr[k];
+        c.strokeStyle = 'rgba(5,30,16,.22)'; c.lineWidth = 1; c.beginPath(); c.arc(p.x, p.y, p.r * .62, p.a + Math.PI - .95, p.a + Math.PI + .95); c.stroke();
+        if (k % 4 === 0 && p.r > R * .35){ // manchas dorsales alargadas, como una víbora
+          c.fillStyle = 'rgba(8,36,21,.6)'; c.beginPath(); c.ellipse(p.x, p.y, p.r * .62, p.r * .48, p.a, 0, TAU); c.fill();
+          c.strokeStyle = 'rgba(232,200,120,.35)'; c.lineWidth = 1; c.stroke();
+        }
+      }
+      drawHead(c, arr[0].x, arr[0].y, ang, R);
     }
   };
-  function step(){
-    const head = snake[0];
-    const opts = [dir, { x: -dir.y, y: dir.x }, { x: dir.y, y: -dir.x }];
-    let best = null, bestScore = 1e9;
-    for (const d of opts){
-      const n = { x: wrapX(head.x + d.x), y: wrapY(head.y + d.y) };
-      if (occupied(n.x, n.y)) continue;
-      const score = dist(n, fruit) - (d === dir ? .4 : 0) + Math.random() * .3;
-      if (score < bestScore){ bestScore = score; best = { d, n }; }
-    }
-    if (!best){ sys.init(); return; }
-    dir = best.d; snake.unshift(best.n);
-    if (best.n.x === fruit.x && best.n.y === fruit.y){
-      if (snake.length - 1 < maxLen) grow = 1;
-      placeFruit();
-    }
-    if (grow > 0) grow--; else snake.pop();
-  }
   return sys;
 })();
 // Un solo canvas, dos sistemas: luciérnagas debajo, serpiente encima
 (() => {
   const dpr = () => Math.min(window.devicePixelRatio || 1, 2);
   const ctxHero = hero.getContext('2d');
+  // Máscara: atenúa el lienzo detrás del texto (contraste WCAG 1.4.3 garantizado sin oscurecer el resto)
+  const inner = $('.hero__inner'), mask = document.createElement('canvas'); let maskKey = '';
+  function buildMask(){
+    const key = combo.w + 'x' + combo.h + '|' + inner.offsetWidth + 'x' + inner.offsetHeight;
+    if (key === maskKey) return; maskKey = key;
+    mask.width = combo.w; mask.height = combo.h;
+    const m = mask.getContext('2d'), hr = hero.parentElement.getBoundingClientRect(), pad = 26;
+    m.clearRect(0, 0, mask.width, mask.height);
+    m.filter = 'blur(14px)'; m.fillStyle = 'rgba(0,0,0,.85)';
+    // una franja por cada línea real de texto (no todo el bloque)
+    $$('.tag, h1, .subtitle, .logline, .micro, .status', inner).forEach(el => {
+      const rg = document.createRange(); rg.selectNodeContents(el);
+      for (const r of rg.getClientRects()) m.fillRect(r.left - hr.left - pad, r.top - hr.top - pad * .6, r.width + pad * 2, r.height + pad * 1.2);
+    });
+  }
   const combo = {
     visible: true, w: 0, h: 0,
-    init(){ flies.w = snakeSys.w = combo.w; flies.h = snakeSys.h = combo.h; flies.init(); snakeSys.init(); },
+    init(){ flies.w = snakeSys.w = combo.w; flies.h = snakeSys.h = combo.h; flies.init(); snakeSys.init(); maskKey = ''; },
     update(dt){ flies.update(dt); snakeSys.update(dt); },
     draw(){
       ctxHero.clearRect(0, 0, combo.w, combo.h);
@@ -511,8 +584,13 @@ const snakeSys = (() => {
       const clear = ctxHero.clearRect; ctxHero.clearRect = () => {};
       flies.draw(); snakeSys.draw();
       ctxHero.clearRect = clear;
+      buildMask();
+      ctxHero.globalCompositeOperation = 'destination-out';
+      ctxHero.drawImage(mask, 0, 0, combo.w, combo.h);
+      ctxHero.globalCompositeOperation = 'source-over';
     }
   };
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { maskKey = ''; if (reduced) combo.draw(); });
   setupCanvas(hero, combo);
 })();
 
