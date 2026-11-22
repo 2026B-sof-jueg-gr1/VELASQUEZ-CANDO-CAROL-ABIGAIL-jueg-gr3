@@ -2,13 +2,24 @@ const CELL = 20;
 const COLS = 40; // 800 / 20
 const ROWS = 30; // 600 / 20
 
-const HEAD_COLOR = 0x9cf5b4;
-const TAIL_COLOR = 0x27ae60;
-const BONUS_EVERY = 5;      // cada cuántas manzanas aparece la estrella
-const BONUS_TIME = 6000;    // ms que dura la estrella en el tablero
+// Paleta de Amaru: la misma que usa la landing page (styles.css)
+const PAL = {
+  bg: 0x0b1410, surface: 0x15231c, line: 0x2b4034,
+  text: '#efe6d2', muted: '#bdb6a2',
+  gold: 0xf2b33d, goldDark: 0xb97f12, goldLight: 0xffe9a8,
+  scale: 0x3fae6a, red: 0xd8433a
+};
+const CSS = { gold: '#f2b33d', goldLight: '#ffe9a8', scale: '#74d695', dark: '#0b1410' };
+const FONT_TITLE = '"Cinzel Decorative", Georgia, serif';
+const FONT_BODY = 'Outfit, system-ui, sans-serif';
+
+const HEAD_COLOR = 0x74d695;  // verde claro de la cabeza
+const TAIL_COLOR = 0x1f6e43;  // verde profundo de la cola
+const BONUS_EVERY = 5;      // cada cuántas manzanas aparece la Fruta del Origen
+const BONUS_TIME = 8000;    // ms que dura la Fruta del Origen (igual que en la landing: 8 segundos)
 const LEVEL_POINTS = 100;   // puntos para pasar al siguiente escenario
 const POWER_TIME = 7000;    // ms que un poder se queda en el tablero
-const SLOW_FACTOR = 1.6;    // cuánto más lento va la serpiente con 🐢
+const SLOW_FACTOR = 1.6;    // cuánto más lento va la serpiente con el poder Lento
 
 // Capas de dibujo (mayor = encima)
 const DEPTH = { bg: 0, ambient: 1, items: 2, snake: 3, fx: 4, hud: 10, banner: 15, overlay: 20 };
@@ -21,10 +32,10 @@ const DIRS = {
 };
 
 const POWERS = {
-  slow: { icon: '🐢', label: 'Lento', color: 0x0984e3, time: 6000 },
-  double: { icon: 'x2', label: 'Puntos x2', color: 0x8e44ad, time: 10000 },
-  shield: { icon: '🛡️', label: 'Escudo', color: 0x00b894 },
-  cut: { icon: '✂️', label: 'Tijeras', color: 0xe17055 }
+  slow: { label: 'Lento', color: 0x3d5bd9, time: 6000 },
+  double: { label: 'Puntos x2', color: 0xf2b33d, time: 10000 },
+  shield: { label: 'Escudo', color: 0x3fae6a },
+  cut: { label: 'Tijeras', color: 0xe2512f }
 };
 
 function loadBest() {
@@ -58,7 +69,7 @@ function drawSegmentShadow(g, cell) {
 }
 
 // Cada bloque tiene un lado oscuro (grosor), una cara superior y un brillo
-function drawSegment(g, cell, color) {
+function drawSegment(g, cell, color, i) {
   const x = cell.x * CELL + 1, y = cell.y * CELL + 1, s = CELL - 2;
   g.fillStyle(shade(color, -0.4));
   g.fillRoundedRect(x, y, s, s, 6);
@@ -66,29 +77,39 @@ function drawSegment(g, cell, color) {
   g.fillRoundedRect(x, y, s, s - 4, 6);
   g.fillStyle(shade(color, 0.5), 0.8);
   g.fillRoundedRect(x + 3, y + 2, s - 8, 4, 2);
+  // Rombo dorado en la espalda, uno sí y uno no (como el dibujo de las escamas de la landing)
+  if (i > 0 && i % 2 === 0) {
+    const cx = x + s / 2, cy = y + (s - 4) / 2;
+    g.fillStyle(PAL.gold, 0.7);
+    g.fillPoints([{ x: cx, y: cy - 4 }, { x: cx + 3.5, y: cy }, { x: cx, y: cy + 4 }, { x: cx - 3.5, y: cy }], true);
+  }
 }
 
 function drawSnake(g, snake, dir, shield) {
   snake.forEach((s) => drawSegmentShadow(g, s));
-  for (let i = snake.length - 1; i >= 0; i--) drawSegment(g, snake[i], segmentColor(i, snake.length));
+  for (let i = snake.length - 1; i >= 0; i--) drawSegment(g, snake[i], segmentColor(i, snake.length), i);
 
   const h = snake[0];
   const cx = h.x * CELL + CELL / 2;
   const cy = h.y * CELL + CELL / 2 - 2;
 
+  // Contorno dorado fino en la cabeza
+  g.lineStyle(1.5, PAL.gold, 0.7);
+  g.strokeRoundedRect(h.x * CELL + 1, h.y * CELL + 1, CELL - 2, CELL - 6, 6);
+
   if (shield) {
-    g.lineStyle(2, 0x55efc4, 0.9);
+    g.lineStyle(2, PAL.gold, 0.9);
     g.strokeCircle(cx, cy + 2, 13);
   }
 
-  // Ojos mirando hacia donde avanza
+  // Ojos dorados con pupila vertical de serpiente, mirando hacia donde avanza
   for (const side of [-1, 1]) {
     const ex = cx + dir.x * 3 - dir.y * side * 4;
     const ey = cy + dir.y * 3 + dir.x * side * 4;
-    g.fillStyle(0xffffff);
-    g.fillCircle(ex, ey, 3);
-    g.fillStyle(0x111111);
-    g.fillCircle(ex + dir.x, ey + dir.y, 1.5);
+    g.fillStyle(0xf2c14e);
+    g.fillCircle(ex, ey, 3.2);
+    g.fillStyle(PAL.bg);
+    if (dir.x !== 0) g.fillEllipse(ex + dir.x * 0.5, ey, 3.2, 1.2); else g.fillEllipse(ex, ey + dir.y * 0.5, 1.2, 3.2);
   }
 }
 
@@ -96,37 +117,51 @@ function drawSnake(g, snake, dir, shield) {
 function drawApple(g) {
   g.fillStyle(0x000000, 0.3);
   g.fillEllipse(2, 9, 16, 6);
-  g.fillStyle(0xa93226);
+  g.fillStyle(0x992a23);
   g.fillCircle(0, 1, 8);
-  g.fillStyle(0xe74c3c);
+  g.fillStyle(PAL.red);
   g.fillCircle(-1, 0, 7);
-  g.fillStyle(0xff8a80, 0.8);
+  g.fillStyle(0xff9f93, 0.8);
   g.fillCircle(-3, -3, 2.5);
-  g.fillStyle(0x8b5a2b);
+  g.fillStyle(0x5a3a0a);
   g.fillRect(-1, -9, 2, 4);
-  g.fillStyle(0x2ecc71);
+  g.fillStyle(PAL.scale);
   g.fillEllipse(4, -7, 7, 4);
 }
 
-function starPoints(ox, oy, outer, inner) {
-  const points = [];
-  for (let i = 0; i < 10; i++) {
-    const r = i % 2 === 0 ? outer : inner;
-    const a = -Math.PI / 2 + (i * Math.PI) / 5;
-    points.push({ x: ox + Math.cos(a) * r, y: oy + Math.sin(a) * r });
-  }
-  return points;
+// La Fruta del Origen: dorada y con halo, igual que la de la landing
+function drawOriginFruit(g) {
+  g.fillStyle(PAL.gold, 0.14);
+  g.fillCircle(0, 0, 18);
+  g.fillStyle(PAL.gold, 0.2);
+  g.fillCircle(0, 0, 14);
+  g.fillStyle(0x000000, 0.3);
+  g.fillEllipse(2, 8, 16, 6);
+  g.fillStyle(PAL.goldDark);
+  g.fillCircle(0, 1, 9);
+  g.fillStyle(PAL.gold);
+  g.fillCircle(-0.5, 0, 8);
+  g.fillStyle(PAL.goldLight, 0.9);
+  g.fillCircle(-3, -3, 3);
+  g.fillStyle(0x5a3a0a);
+  g.fillRect(-1, -10, 2, 4);
+  g.fillStyle(PAL.scale);
+  g.fillEllipse(4, -8, 7, 4);
 }
 
-function drawStar(g) {
-  g.fillStyle(0x000000, 0.3);
-  g.fillPoints(starPoints(2, 4, 10, 4.5), true);
-  g.fillStyle(0xb7950b);
-  g.fillPoints(starPoints(0, 1.5, 10, 4.5), true);
-  g.fillStyle(0xf1c40f);
-  g.fillPoints(starPoints(0, 0, 10, 4.5), true);
-  g.fillStyle(0xffffff, 0.6);
-  g.fillCircle(-1.5, -2.5, 1.8);
+// Iconos de los poderes dibujados con formas (sin emojis), igual que los iconos de la landing
+function drawPowerIcon(g, type) {
+  g.fillStyle(0xffffff);
+  g.lineStyle(2, 0xffffff);
+  if (type === 'slow') { // reloj de arena
+    g.fillTriangle(-4, -5, 4, -5, 0, 0);
+    g.fillTriangle(-4, 5, 4, 5, 0, 0);
+  } else if (type === 'shield') {
+    g.fillPoints([{ x: -5, y: -5 }, { x: 5, y: -5 }, { x: 5, y: 1 }, { x: 0, y: 6 }, { x: -5, y: 1 }], true);
+  } else if (type === 'cut') { // tijeras
+    g.lineBetween(-4, -5, 4, 5);
+    g.lineBetween(4, -5, -4, 5);
+  }
 }
 
 function drawOrb(g, color) {
@@ -402,8 +437,9 @@ function beep(scene, freq, duration, type = 'square', slideTo = null) {
   } catch (e) { /* sin audio */ }
 }
 
-const TEXT = { fontFamily: 'monospace', color: '#ffffff' };
-const HUD_STYLE = { ...TEXT, fontSize: '18px', backgroundColor: 'rgba(0,0,0,0.5)', padding: { x: 8, y: 4 } };
+const TEXT = { fontFamily: FONT_BODY, color: PAL.text };
+const TITLE = { fontFamily: FONT_TITLE, color: CSS.gold, fontStyle: '900' };
+const HUD_STYLE = { ...TEXT, fontSize: '18px', backgroundColor: 'rgba(11,20,16,0.78)', padding: { x: 10, y: 4 } };
 
 // ---------- Escenas ----------
 
@@ -418,35 +454,42 @@ class MenuScene extends Phaser.Scene {
 
     // Serpiente decorativa persiguiendo una manzana
     const snake = [];
-    for (let i = 0; i < 12; i++) snake.push({ x: 25 - i, y: 3 });
+    for (let i = 0; i < 12; i++) snake.push({ x: 25 - i, y: 2 });
     drawSnake(this.add.graphics().setDepth(DEPTH.snake), snake, { x: 1, y: 0 }, false);
     const apple = this.add.graphics().setDepth(DEPTH.items);
     drawApple(apple);
-    apple.setPosition(29 * CELL + CELL / 2, 3 * CELL + CELL / 2);
+    apple.setPosition(29 * CELL + CELL / 2, 2 * CELL + CELL / 2);
     this.tweens.add({ targets: apple, scale: 1.15, duration: 400, yoyo: true, repeat: -1 });
 
     const front = (obj) => obj.setOrigin(0.5).setDepth(DEPTH.hud);
-    front(this.add.text(400, 160, 'SNAKE', {
-      ...TEXT, fontSize: '96px', fontStyle: 'bold', color: '#9cf5b4',
-      stroke: '#145a32', strokeThickness: 10, shadow: { offsetX: 4, offsetY: 6, color: '#000', blur: 6, fill: true, stroke: true }
+    front(this.add.text(400, 135, 'AMARU', {
+      ...TITLE, fontSize: '92px',
+      stroke: '#3a2504', strokeThickness: 8, shadow: { offsetX: 3, offsetY: 5, color: '#000', blur: 8, fill: true, stroke: true }
     }));
-    front(this.add.text(400, 232, 'Come manzanas, crece y no choques', {
-      ...TEXT, fontSize: '20px', stroke: '#000', strokeThickness: 4
+    front(this.add.text(400, 205, 'la Fruta del Origen', {
+      ...TITLE, fontSize: '24px', fontStyle: '700', color: PAL.text, stroke: '#0b1410', strokeThickness: 5
+    }));
+    front(this.add.text(400, 243, 'Fase inicial · Come, crece y muda tu piel', {
+      ...TEXT, fontSize: '19px', stroke: '#0b1410', strokeThickness: 4
     }));
 
-    this.add.rectangle(400, 355, 520, 170, 0x000000, 0.55).setStrokeStyle(2, 0x9cf5b4, 0.6).setDepth(DEPTH.hud);
-    front(this.add.text(400, 355, [
-      'Flechas / WASD / deslizar : moverse',
-      'P / Esc                   : pausa',
-      'Estrella dorada           : +50 puntos',
-      '',
-      '🐢 lento   x2 doble   🛡️ escudo   ✂️ tijeras',
-      'Cada 100 puntos cambia el escenario'
-    ], { ...TEXT, fontSize: '16px', lineSpacing: 6, align: 'left' }));
+    this.add.rectangle(400, 346, 560, 140, PAL.bg, 0.85).setStrokeStyle(2, PAL.gold, 0.55).setDepth(DEPTH.hud);
+    front(this.add.text(400, 346, [
+      'Flechas / WASD / deslizar: moverte   ·   P o Esc: pausa',
+      'La Fruta del Origen dorada da +50 y solo dura 8 segundos',
+      'Poderes: Lento · Puntos x2 · Escudo · Tijeras',
+      'Cada 100 puntos viajas a una nueva tierra'
+    ], { ...TEXT, fontSize: '17px', lineSpacing: 9, align: 'center' }));
 
-    front(this.add.text(400, 470, 'Récord: ' + loadBest(), HUD_STYLE).setColor('#f1c40f'));
-    front(this.add.text(400, 530, 'Presiona ESPACIO o toca la pantalla para jugar', {
-      ...TEXT, fontSize: '18px', stroke: '#000', strokeThickness: 4
+    // Las cinco tierras, con los mismos colores de la landing
+    const worlds = [['Bosque', '#6fd197'], ['Desierto', '#e0b469'], ['Nieve', '#cfe6f2'], ['Volcán', '#f0704d'], ['Noche', '#8fa4ff']];
+    worlds.forEach(([name, color], i) => front(this.add.text(176 + i * 112, 432, name, {
+      ...TEXT, fontSize: '16px', fontStyle: '700', color, backgroundColor: 'rgba(11,20,16,0.85)', padding: { x: 8, y: 3 }
+    })));
+
+    front(this.add.text(400, 478, 'Récord: ' + loadBest(), HUD_STYLE).setColor(CSS.gold));
+    front(this.add.text(400, 535, 'Presiona ESPACIO o toca la pantalla para jugar', {
+      ...TEXT, fontSize: '19px', stroke: '#0b1410', strokeThickness: 5
     }));
 
     const start = () => {
@@ -489,17 +532,17 @@ class SnakeScene extends Phaser.Scene {
     this.tweens.add({ targets: this.foodGfx, scale: 1.15, duration: 400, yoyo: true, repeat: -1 });
 
     this.bonusGfx = this.add.graphics().setVisible(false).setDepth(DEPTH.items);
-    drawStar(this.bonusGfx);
-    this.tweens.add({ targets: this.bonusGfx, angle: 360, duration: 3000, repeat: -1 });
+    drawOriginFruit(this.bonusGfx);
+    this.tweens.add({ targets: this.bonusGfx, scale: 1.12, duration: 600, yoyo: true, repeat: -1 });
 
     this.gfx = this.add.graphics().setDepth(DEPTH.snake);
     const burst = (tint, speed, lifespan) => this.add.particles(0, 0, 'dot', {
       speed, lifespan, scale: { start: 1, end: 0 }, tint, emitting: false
     }).setDepth(DEPTH.fx);
-    this.appleBurst = burst(0xe74c3c, { min: 60, max: 200 }, 450);
-    this.starBurst = burst(0xf1c40f, { min: 80, max: 260 }, 600);
+    this.appleBurst = burst(PAL.red, { min: 60, max: 200 }, 450);
+    this.starBurst = burst(PAL.gold, { min: 80, max: 260 }, 600);
     this.powerBurst = burst(0xffffff, { min: 80, max: 220 }, 500);
-    this.cutBurst = burst(0x2ecc71, { min: 40, max: 140 }, 400);
+    this.cutBurst = burst(PAL.scale, { min: 40, max: 140 }, 400);
 
     this.food = this.spawnFood();
     this.placeAt(this.foodGfx, this.food);
@@ -511,9 +554,9 @@ class SnakeScene extends Phaser.Scene {
     this.updateLevelText();
 
     this.pauseLayer = this.add.container(0, 0, [
-      this.add.rectangle(400, 300, 800, 600, 0x000000, 0.5),
-      this.add.text(400, 280, 'Pausa', { ...TEXT, fontSize: '48px' }).setOrigin(0.5),
-      this.add.text(400, 335, 'P o Esc para continuar', { ...TEXT, fontSize: '18px', color: '#cccccc' }).setOrigin(0.5)
+      this.add.rectangle(400, 300, 800, 600, PAL.bg, 0.65),
+      this.add.text(400, 280, 'Pausa', { ...TITLE, fontSize: '48px' }).setOrigin(0.5),
+      this.add.text(400, 335, 'P o Esc para continuar', { ...TEXT, fontSize: '18px', color: PAL.muted }).setOrigin(0.5)
     ]).setVisible(false).setDepth(DEPTH.overlay);
 
     this.input.keyboard.addCapture('UP,DOWN,LEFT,RIGHT,SPACE');
@@ -593,7 +636,7 @@ class SnakeScene extends Phaser.Scene {
     if (takesPower) this.collectPower();
 
     if (eatsBonus) {
-      this.addPoints(50, this.bonus, this.starBurst, '#f1c40f');
+      this.addPoints(50, this.bonus, this.starBurst, CSS.gold);
       beep(this, 520, 0.25, 'triangle', 1560);
       this.removeBonus();
     }
@@ -623,7 +666,7 @@ class SnakeScene extends Phaser.Scene {
     const x = cell.x * CELL + CELL / 2;
     const y = cell.y * CELL + CELL / 2;
     burst.explode(14, x, y);
-    this.floatText(x, y, '+' + gained, this.effects.double > 0 ? '#d6a2e8' : color);
+    this.floatText(x, y, '+' + gained, this.effects.double > 0 ? CSS.goldLight : color);
     this.checkLevel();
   }
 
@@ -663,7 +706,7 @@ class SnakeScene extends Phaser.Scene {
 
   showBanner(text) {
     const t = this.add.text(400, 300, text, {
-      ...TEXT, fontSize: '42px', fontStyle: 'bold', stroke: '#000', strokeThickness: 8
+      ...TITLE, fontSize: '40px', fontStyle: '700', stroke: '#0b1410', strokeThickness: 8
     }).setOrigin(0.5).setDepth(DEPTH.banner).setAlpha(0).setScale(0.6);
     this.tweens.add({
       targets: t, alpha: 1, scale: 1, duration: 300, ease: 'Back.Out',
@@ -689,12 +732,12 @@ class SnakeScene extends Phaser.Scene {
     }
 
     const parts = [];
-    if (fx.slow > 0) parts.push('🐢 ' + Math.ceil(fx.slow / 1000) + 's');
+    if (fx.slow > 0) parts.push('Lento ' + Math.ceil(fx.slow / 1000) + 's');
     if (fx.double > 0) parts.push('x2 ' + Math.ceil(fx.double / 1000) + 's');
-    if (fx.shield) parts.push('🛡️ escudo');
-    const text = parts.join('   ');
+    if (fx.shield) parts.push('Escudo');
+    const text = parts.join('   ·   ');
     if (text !== this.effectsText.text) this.effectsText.setText(text).setVisible(text !== '');
-    this.scoreText.setColor(fx.double > 0 ? '#d6a2e8' : '#ffffff');
+    this.scoreText.setColor(fx.double > 0 ? CSS.gold : PAL.text);
   }
 
   spawnPower() {
@@ -709,9 +752,11 @@ class SnakeScene extends Phaser.Scene {
 
     const g = this.add.graphics();
     drawOrb(g, def.color);
-    const icon = this.add.text(0, 0, def.icon, {
-      ...TEXT, fontSize: type === 'double' ? '11px' : '12px', fontStyle: 'bold'
-    }).setOrigin(0.5);
+    // El poder x2 lleva texto; los demás, un icono dibujado con formas
+    const icon = type === 'double'
+      ? this.add.text(0, 0, 'x2', { ...TEXT, fontSize: '12px', fontStyle: '800', color: '#1a1204' }).setOrigin(0.5)
+      : this.add.graphics();
+    if (type !== 'double') drawPowerIcon(icon, type);
     const obj = this.add.container(0, 0, [g, icon]).setDepth(DEPTH.items);
     this.placeAt(obj, cell);
     this.tweens.add({ targets: obj, scale: 1.12, duration: 350, yoyo: true, repeat: -1 });
@@ -750,7 +795,7 @@ class SnakeScene extends Phaser.Scene {
     this.cameras.main.shake(120, 0.005);
     beep(this, 880, 0.2, 'sine', 220);
     const h = this.snake[0];
-    this.floatText(h.x * CELL + CELL / 2, h.y * CELL, '¡Escudo!', '#55efc4');
+    this.floatText(h.x * CELL + CELL / 2, h.y * CELL, '¡Escudo!', CSS.gold);
     return true;
   }
 
@@ -786,6 +831,7 @@ class SnakeScene extends Phaser.Scene {
     this.bonus = Phaser.Utils.Array.GetRandom(free);
     this.placeAt(this.bonusGfx, this.bonus);
     this.bonusGfx.setVisible(true).setAlpha(1);
+    this.floatText(this.bonus.x * CELL + CELL / 2, this.bonus.y * CELL, '¡Fruta del Origen!', CSS.gold);
     // Se desvanece en los últimos 2 segundos para avisar que se va
     this.bonusFade = this.tweens.add({ targets: this.bonusGfx, alpha: 0.25, delay: BONUS_TIME - 2000, duration: 2000 });
     this.bonusTimer = this.time.delayedCall(BONUS_TIME, () => this.removeBonus());
@@ -824,21 +870,21 @@ class SnakeScene extends Phaser.Scene {
     }
 
     const over = (obj) => obj.setDepth(DEPTH.overlay);
-    over(this.add.rectangle(400, 300, 800, 600, 0x000000, 0.6));
+    over(this.add.rectangle(400, 300, 800, 600, PAL.bg, 0.78));
     over(this.add.text(400, 230, won ? '¡Ganaste!' : 'Game Over', {
-      ...TEXT, fontSize: '56px', fontStyle: 'bold'
+      ...TITLE, fontSize: '56px'
     }).setOrigin(0.5));
     over(this.add.text(400, 300, 'Puntos: ' + this.score + '   ·   Nivel ' + (this.level + 1), {
-      ...TEXT, fontSize: '24px', color: '#9cf5b4'
+      ...TEXT, fontSize: '24px', color: CSS.scale
     }).setOrigin(0.5));
     if (newRecord && this.score > 0) {
       const rec = over(this.add.text(400, 345, '¡Nuevo récord!', {
-        ...TEXT, fontSize: '22px', color: '#f1c40f'
+        ...TEXT, fontSize: '22px', fontStyle: '700', color: CSS.goldLight
       }).setOrigin(0.5).setScale(0));
       this.tweens.add({ targets: rec, scale: 1, duration: 400, ease: 'Back.Out' });
     }
     over(this.add.text(400, 410, 'ESPACIO o toca: reintentar   ·   M: menú', {
-      ...TEXT, fontSize: '18px', color: '#cccccc'
+      ...TEXT, fontSize: '18px', color: PAL.muted
     }).setOrigin(0.5));
 
     this.input.keyboard.once('keydown-SPACE', () => this.scene.restart());
@@ -852,7 +898,7 @@ const config = {
   width: 800,
   height: 600,
   parent: 'game',
-  backgroundColor: '#1b1b1b',
+  backgroundColor: '#0b1410',
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH
@@ -860,4 +906,12 @@ const config = {
   scene: [MenuScene, SnakeScene]
 };
 
-const game = new Phaser.Game(config);
+// Espera a que carguen las tipografías de Amaru para que el canvas no dibuje con otra letra.
+// Si tardan o fallan, el juego arranca igual con la letra de respaldo.
+const fontsReady = document.fonts
+  ? Promise.all([document.fonts.load('900 40px "Cinzel Decorative"'), document.fonts.load('700 40px "Cinzel Decorative"'),
+    document.fonts.load('400 16px Outfit'), document.fonts.load('700 16px Outfit'), document.fonts.load('800 16px Outfit')])
+  : Promise.resolve();
+Promise.race([fontsReady, new Promise((r) => setTimeout(r, 2500))])
+  .catch(() => {})
+  .then(() => { new Phaser.Game(config); });

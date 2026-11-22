@@ -3,27 +3,53 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Snake Phaser - ISWD823</title>
+  <title>Amaru: la Fruta del Origen · Fase inicial</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Outfit:wght@400;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
   <style>
+    /* Mismos colores que la landing page de Amaru */
+    :root { --bg: #0b1410; --text: #efe6d2; --gold: #f2b33d; --line: #2b4034; }
     body {
       margin: 0;
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
       min-height: 100vh;
-      background: #151b54;
+      min-height: 100dvh;
+      background-color: var(--bg);
+      /* patrón chakana muy sutil, igual que la landing */
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 48 48'%3E%3Cpath d='M18 6h12v6h6v6h6v12h-6v6h-6v6H18v-6h-6v-6H6V18h6v-6h6z' fill='none' stroke='%23f2b33d' stroke-opacity='.06' stroke-width='1.2'/%3E%3C/svg%3E");
+      color: var(--text);
+      font-family: Outfit, system-ui, sans-serif;
     }
     #game {
       width: 100vw;
-      height: 100vh;
+      height: calc(100vh - 52px);
+      height: calc(100dvh - 52px);
       max-width: 800px;
       max-height: 600px;
+      border: 2px solid var(--line);
+      border-radius: 10px;
+      box-shadow: 0 0 0 1px rgba(242, 179, 61, .25), 0 18px 50px rgba(0, 0, 0, .55);
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+    .back { margin: 10px 0 0; height: 32px; font-size: .95rem; text-align: center; padding: 0 16px; }
+    .back a { color: var(--gold); font-weight: 700; display: inline-block; padding: 4px 6px; }
+    .back a:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; border-radius: 6px; }
+    /* En pantallas bajas (como el marco de itch.io) el juego usa todo el alto y se oculta el enlace */
+    @media (max-height: 660px) {
+      .back { display: none; }
+      #game { height: 100vh; height: 100dvh; border: 0; border-radius: 0; box-shadow: none; }
     }
   </style>
 </head>
 <body>
   <div id="game"></div>
+  <p class="back"><a href="https://2026b-sof-jueg-gr1.github.io/VELASQUEZ-CANDO-CAROL-ABIGAIL-jueg-gr3/Landing-Amaru/">← Conoce la historia de Amaru</a></p>
   <script src="game.js"></script>
 </body>
 </html>
