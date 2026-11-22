@@ -16,9 +16,8 @@ const FONT_BODY = 'Outfit, system-ui, sans-serif';
 
 const HEAD_COLOR = 0x74d695;  // verde claro de la cabeza
 const TAIL_COLOR = 0x1f6e43;  // verde profundo de la cola
-const BONUS_EVERY = 5;      // cada cuántas manzanas aparece la Fruta del Origen
-const BONUS_TIME = 8000;    // ms que dura la Fruta del Origen (igual que en la landing: 8 segundos)
-const LEVEL_POINTS = 100;   // puntos para pasar al siguiente escenario
+const MATERIAL_EVERY = 5;   // cada cuántas manzanas aparece el siguiente material de la tierra
+const FRUIT_TIME = 8000;    // ms que dura la Fruta del Origen (igual que en la landing: 8 segundos)
 const POWER_TIME = 7000;    // ms que un poder se queda en el tablero
 const SLOW_FACTOR = 1.6;    // cuánto más lento va la serpiente con el poder Lento
 

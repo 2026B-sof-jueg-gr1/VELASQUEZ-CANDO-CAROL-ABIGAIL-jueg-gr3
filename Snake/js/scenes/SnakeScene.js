@@ -4,7 +4,7 @@ class SnakeScene extends Phaser.Scene {
   }
 
   create() {
-    this.snake = [{ x: 20, y: 15 }, { x: 19, y: 15 }, { x: 18, y: 15 }];
+    this.snake = this.startSnake();
     this.dir = { x: 1, y: 0 };
     this.queue = [];
     this.score = 0;
@@ -13,25 +13,31 @@ class SnakeScene extends Phaser.Scene {
     this.acc = 0;
     this.dead = false;
     this.paused = false;
-    this.applesEaten = 0;
-    this.bonus = null;
-    // El nivel de partida (GameState.level va de 1 a 5) manda en qué tierra empezamos
-    this.startLevel = GameState.level - 1;
-    this.level = this.startLevel;
+    this.busy = false;               // true durante la muda y el espejo: el juego se detiene
+    this.applesSinceMaterial = 0;    // manzanas comidas desde el último material
+    this.material = null;            // material que está en el tablero
+    this.fruit = null;               // Fruta del Origen que está en el tablero
     this.power = null;               // poder que está en el tablero
     this.powerCooldown = 5000;       // ms hasta intentar sacar otro poder
     this.effects = { slow: 0, double: 0, shield: false };
 
     makeTextures(this);
-    this.scenario = createScenario(this, LEVELS[this.startLevel].scenario);
+    this.scenario = createScenario(this, GameState.current().scenario);
 
     this.foodGfx = this.add.graphics().setDepth(DEPTH.items);
     drawApple(this.foodGfx);
     this.tweens.add({ targets: this.foodGfx, scale: 1.15, duration: 400, yoyo: true, repeat: -1 });
 
-    this.bonusGfx = this.add.graphics().setVisible(false).setDepth(DEPTH.items);
-    drawOriginFruit(this.bonusGfx);
-    this.tweens.add({ targets: this.bonusGfx, scale: 1.12, duration: 600, yoyo: true, repeat: -1 });
+    this.materialGfx = this.add.graphics().setVisible(false).setDepth(DEPTH.items);
+    this.tweens.add({ targets: this.materialGfx, scale: 1.15, duration: 500, yoyo: true, repeat: -1 });
+
+    this.fruitGfx = this.add.graphics().setVisible(false).setDepth(DEPTH.items);
+    drawOriginFruit(this.fruitGfx);
+    this.tweens.add({ targets: this.fruitGfx, scale: 1.15, duration: 450, yoyo: true, repeat: -1 });
+    this.fruitGlow = null;
+    this.fruitLabel = this.add.text(0, 0, '', {
+      ...TEXT, fontSize: '20px', fontStyle: '800', color: CSS.goldLight, stroke: '#0b1410', strokeThickness: 4
+    }).setOrigin(0.5).setDepth(DEPTH.fx).setVisible(false);
 
     this.gfx = this.add.graphics().setDepth(DEPTH.snake);
     const burst = (tint, speed, lifespan) => this.add.particles(0, 0, 'dot', {
@@ -41,6 +47,7 @@ class SnakeScene extends Phaser.Scene {
     this.starBurst = burst(PAL.gold, { min: 80, max: 260 }, 600);
     this.powerBurst = burst(0xffffff, { min: 80, max: 220 }, 500);
     this.cutBurst = burst(PAL.scale, { min: 40, max: 140 }, 400);
+    this.shedBurst = burst(0xcfe0b8, { min: 30, max: 130 }, 900);
 
     this.food = this.spawnFood();
     this.placeAt(this.foodGfx, this.food);
@@ -49,7 +56,10 @@ class SnakeScene extends Phaser.Scene {
     this.levelText = this.add.text(400, 8, '', HUD_STYLE).setOrigin(0.5, 0).setDepth(DEPTH.hud);
     this.bestText = this.add.text(790, 8, 'Récord: ' + this.best, HUD_STYLE).setOrigin(1, 0).setDepth(DEPTH.hud);
     this.effectsText = this.add.text(10, 592, '', HUD_STYLE).setOrigin(0, 1).setDepth(DEPTH.hud).setVisible(false);
+    // Los 3 espacios de materiales, arriba a la derecha
+    this.slots = [0, 1, 2].map((i) => this.add.graphics({ x: 702 + i * 32, y: 58 }).setDepth(DEPTH.hud));
     this.updateLevelText();
+    this.drawSlots();
 
     this.pauseLayer = this.add.container(0, 0, [
       this.add.rectangle(400, 300, 800, 600, PAL.bg, 0.65),
@@ -68,7 +78,13 @@ class SnakeScene extends Phaser.Scene {
       this.turn(Math.abs(dx) > Math.abs(dy) ? { x: Math.sign(dx), y: 0 } : { x: 0, y: Math.sign(dy) });
     });
 
+    // Si moriste con los 3 materiales, la Fruta del Origen vuelve a aparecer al reintentar
+    if (GameState.materials >= 3) this.spawnFruit();
     this.draw();
+  }
+
+  startSnake() {
+    return [{ x: 20, y: 15 }, { x: 19, y: 15 }, { x: 18, y: 15 }];
   }
 
   handleKey(code) {
@@ -79,7 +95,7 @@ class SnakeScene extends Phaser.Scene {
   }
 
   turn(d) {
-    if (this.dead || this.paused) return;
+    if (this.dead || this.paused || this.busy) return;
     // Comparar con la última dirección encolada para no dar media vuelta
     const last = this.queue.length ? this.queue[this.queue.length - 1] : this.dir;
     if (d.x === -last.x && d.y === -last.y) return;
@@ -88,21 +104,22 @@ class SnakeScene extends Phaser.Scene {
   }
 
   togglePause() {
-    if (this.dead) return;
+    if (this.dead || this.busy) return;
     this.paused = !this.paused;
     this.pauseLayer.setVisible(this.paused);
-    // Detiene también el temporizador de la estrella y las animaciones
+    // Detiene también los temporizadores y las animaciones
     this.time.paused = this.paused;
     if (this.paused) this.tweens.pauseAll(); else this.tweens.resumeAll();
   }
 
   update(time, delta) {
-    if (this.dead || this.paused) return;
+    if (this.dead || this.paused || this.busy) return;
     this.updatePowers(delta);
+    this.updateFruit(delta);
     this.acc += delta;
-    // Con el poder 🐢 cada paso tarda más
+    // Con el poder Lento cada paso tarda más
     const delay = this.effects.slow > 0 ? this.stepDelay * SLOW_FACTOR : this.stepDelay;
-    while (this.acc >= delay && !this.dead) {
+    while (this.acc >= delay && !this.dead && !this.busy) {
       this.acc -= delay;
       this.step();
     }
@@ -120,12 +137,14 @@ class SnakeScene extends Phaser.Scene {
       head.y = (head.y + ROWS) % ROWS;
     }
 
-    const eatsApple = this.food && head.x === this.food.x && head.y === this.food.y;
-    const eatsBonus = this.bonus && head.x === this.bonus.x && head.y === this.bonus.y;
-    const takesPower = this.power && head.x === this.power.x && head.y === this.power.y;
-    const growing = eatsApple || eatsBonus;
+    const at = (c) => c && head.x === c.x && head.y === c.y;
+    const eatsApple = at(this.food);
+    const eatsMaterial = at(this.material);
+    const eatsFruit = at(this.fruit);
+    const takesPower = at(this.power);
+    // Solo la manzana alarga la serpiente
     // Si no come, la cola se mueve, así que esa celda queda libre
-    const body = growing ? this.snake : this.snake.slice(0, -1);
+    const body = eatsApple ? this.snake : this.snake.slice(0, -1);
     if (body.some((s) => s.x === head.x && s.y === head.y)) {
       if (!this.useShield()) return this.gameOver();
     }
@@ -133,25 +152,26 @@ class SnakeScene extends Phaser.Scene {
     this.snake.unshift(head);
 
     if (takesPower) this.collectPower();
+    if (eatsMaterial) this.collectMaterial();
 
-    if (eatsBonus) {
-      this.addPoints(50, this.bonus, this.starBurst, CSS.gold);
-      beep(this, 520, 0.25, 'triangle', 1560);
-      this.removeBonus();
+    if (eatsFruit) {
+      this.eatFruit(); // la muda reinicia la serpiente
+      return;
     }
 
     if (eatsApple) {
       this.addPoints(10, this.food, this.appleBurst, '#ff7675');
       beep(this, 660, 0.08, 'square', 990);
       this.stepDelay = Math.max(60, this.stepDelay - 3);
-      this.applesEaten++;
+      this.applesSinceMaterial++;
       this.food = this.spawnFood();
       if (!this.food) return this.gameOver(true);
       this.placeAt(this.foodGfx, this.food);
-      if (this.applesEaten % BONUS_EVERY === 0) this.spawnBonus();
+      // Cada MATERIAL_EVERY manzanas aparece el siguiente material de la tierra
+      if (this.applesSinceMaterial >= MATERIAL_EVERY) this.spawnMaterial();
     }
 
-    if (!growing) this.snake.pop();
+    if (!eatsApple) this.snake.pop();
 
     this.draw();
   }
@@ -166,36 +186,253 @@ class SnakeScene extends Phaser.Scene {
     const y = cell.y * CELL + CELL / 2;
     burst.explode(14, x, y);
     this.floatText(x, y, '+' + gained, this.effects.double > 0 ? CSS.goldLight : color);
-    this.checkLevel();
   }
 
   floatText(x, y, text, color) {
+    x = Phaser.Math.Clamp(x, 80, 720); // que el texto no se corte en los bordes
     const label = this.add.text(x, y, text, {
       ...TEXT, fontSize: '18px', fontStyle: 'bold', color, stroke: '#000', strokeThickness: 3
     }).setOrigin(0.5).setDepth(DEPTH.fx);
     this.tweens.add({ targets: label, y: y - 40, alpha: 0, duration: 800, onComplete: () => label.destroy() });
   }
 
-  // ---------- Niveles y escenarios ----------
+  // ---------- Materiales ----------
 
-  checkLevel() {
-    const level = this.startLevel + Math.floor(this.score / LEVEL_POINTS);
-    if (level === this.level) return;
-    this.setLevel(level);
+  // Dibuja los 3 espacios: vacíos o con el material que ya tienes
+  drawSlots() {
+    const mats = GameState.current().materials;
+    this.slots.forEach((g, i) => {
+      const filled = i < GameState.materials;
+      g.clear();
+      g.fillStyle(PAL.bg, 0.82);
+      g.fillCircle(0, 0, 16);
+      g.lineStyle(2, filled ? PAL.gold : PAL.line, filled ? 1 : 0.9);
+      g.strokeCircle(0, 0, 16);
+      if (filled) {
+        drawMaterial(g, mats[i].shape, mats[i].color);
+      } else {
+        g.fillStyle(PAL.line, 0.8);
+        g.fillCircle(0, 0, 3);
+      }
+    });
   }
 
-  // Cambia de nivel y guarda la partida (así "Continuar" retoma en esta tierra)
-  setLevel(level) {
-    this.level = level;
-    GameState.level = (level % LEVELS.length) + 1;
+  spawnMaterial() {
+    if (this.material || this.fruit || GameState.materials >= 3) return;
+    const free = this.freeCells();
+    if (!free.length) return;
+    const cell = Phaser.Utils.Array.GetRandom(free);
+    const def = GameState.current().materials[GameState.materials];
+    this.material = { ...cell, def };
+    this.applesSinceMaterial = 0;
+    this.materialGfx.clear();
+    drawMaterial(this.materialGfx, def.shape, def.color);
+    this.placeAt(this.materialGfx, cell);
+    this.materialGfx.setVisible(true);
+    this.floatText(cell.x * CELL + CELL / 2, cell.y * CELL, def.name, CSS.goldLight);
+  }
+
+  removeMaterial() {
+    this.material = null;
+    this.materialGfx.setVisible(false);
+  }
+
+  collectMaterial() {
+    const { def } = this.material;
+    this.addPoints(20, this.material, this.starBurst, CSS.gold);
+    beep(this, 440, 0.12, 'triangle', 880);
+    this.removeMaterial();
+    GameState.materials++;
+    GameState.save();
+    this.drawSlots();
+    const slot = this.slots[GameState.materials - 1];
+    this.tweens.add({ targets: slot, scale: 1.4, duration: 150, yoyo: true });
+    if (GameState.materials >= 3) this.spawnFruit();
+    else this.floatText(this.snake[0].x * CELL + CELL / 2, this.snake[0].y * CELL - 14, def.name + ' ' + GameState.materials + '/3', CSS.goldLight);
+  }
+
+  // ---------- La Fruta del Origen ----------
+
+  // Aparece a 1 o 2 celdas de una pared y se marchita si no la comes a tiempo
+  spawnFruit() {
+    if (this.fruit) return;
+    const free = this.freeCells();
+    if (!free.length) return;
+    const nearWall = free.filter((c) =>
+      [1, 2, COLS - 3, COLS - 2].includes(c.x) || [1, 2, ROWS - 3, ROWS - 2].includes(c.y));
+    const cell = Phaser.Utils.Array.GetRandom(nearWall.length ? nearWall : free);
+    this.fruit = { ...cell, life: FRUIT_TIME };
+
+    this.placeAt(this.fruitGfx, cell);
+    this.fruitGfx.setVisible(true).setAlpha(1);
+    const px = cell.x * CELL + CELL / 2, py = cell.y * CELL + CELL / 2;
+    this.fruitGlow = this.add.particles(px, py, 'dot', {
+      speed: { min: 15, max: 50 }, lifespan: 900, scale: { start: 0.8, end: 0 },
+      alpha: { start: 0.8, end: 0 }, tint: PAL.gold, frequency: 80, blendMode: 'ADD'
+    }).setDepth(DEPTH.items);
+    this.fruitLabel.setPosition(px, py < 70 ? py + 30 : py - 30).setText(String(Math.ceil(FRUIT_TIME / 1000))).setVisible(true);
+
+    this.floatText(px, py - 18, '¡Fruta del Origen!', CSS.gold);
+    beep(this, 392, 0.3, 'sine', 988);
+  }
+
+  removeFruit() {
+    this.fruit = null;
+    this.fruitGfx.setVisible(false);
+    this.fruitLabel.setVisible(false);
+    if (this.fruitGlow) { this.fruitGlow.destroy(); this.fruitGlow = null; }
+  }
+
+  updateFruit(delta) {
+    if (!this.fruit) return;
+    this.fruit.life -= delta;
+    this.fruitLabel.setText(String(Math.max(0, Math.ceil(this.fruit.life / 1000))));
+    // Se va apagando en los últimos 2 segundos (sin parpadeos)
+    this.fruitGfx.setAlpha(Math.min(1, 0.3 + this.fruit.life / 2000));
+    if (this.fruit.life <= 0) this.witherFruit();
+  }
+
+  // Si se marchita, pierdes 1 material y hay que juntarlo otra vez
+  witherFruit() {
+    const px = this.fruit.x * CELL + CELL / 2, py = this.fruit.y * CELL + CELL / 2;
+    this.removeFruit();
+    GameState.materials = Math.max(0, GameState.materials - 1);
+    GameState.save();
+    this.drawSlots();
+    this.applesSinceMaterial = 0;
+    this.floatText(px, py, 'Se marchitó: −1 material', '#f0704d');
+    beep(this, 300, 0.4, 'sawtooth', 90);
+  }
+
+  // Al comer la fruta: muda de piel, espejo y siguiente tierra
+  eatFruit() {
+    this.addPoints(50, this.fruit, this.starBurst, CSS.gold);
+    beep(this, 520, 0.25, 'triangle', 1560);
+    this.removeFruit();
+    this.removeMaterial();
+    this.removePower();
+    this.busy = true;
+    this.shedSkin();
+    this.time.delayedCall(700, () => this.playMirror(() => this.advanceLevel()));
+  }
+
+  // La piel vieja se desprende y cae; la serpiente vuelve a empezar con 3 segmentos
+  shedSkin() {
+    const skin = this.add.graphics().setDepth(DEPTH.fx).setAlpha(0.75);
+    drawSnake(skin, this.snake, this.dir, false, GameState.level);
+    this.tweens.add({ targets: skin, y: 18, alpha: 0, duration: 1000, onComplete: () => skin.destroy() });
+    this.snake.forEach((s) => this.shedBurst.explode(3, s.x * CELL + CELL / 2, s.y * CELL + CELL / 2));
+    [660, 520, 400].forEach((f, i) => this.time.delayedCall(i * 120, () => beep(this, f, 0.2, 'triangle', f / 2)));
+
+    this.snake = this.startSnake();
+    this.dir = { x: 1, y: 0 };
+    this.queue = [];
+    this.stepDelay = 120;
+    this.acc = 0;
+    this.gfx.setVisible(false);
+  }
+
+  // El espejo: el reflejo de la serpiente y, por un instante, una silueta humana.
+  // Cuanto más avanzas, más tiempo (de 0,1 s a 0,6 s) y más nítida se ve.
+  playMirror(onDone) {
+    const stage = GameState.level;
+    const hold = 100 + (stage - 1) * 125;
+    const peak = 0.3 + stage * 0.1;
+    const cx = 400, cy = 270;
+
+    const layer = this.add.container(0, 0).setDepth(DEPTH.overlay).setAlpha(0);
+    const dim = this.add.rectangle(400, 300, 800, 600, PAL.bg, 0.92);
+    const glass = this.add.graphics({ x: cx, y: cy });
+    glass.fillStyle(0x0f1d17);
+    glass.fillEllipse(0, 0, 240, 320);
+    const reflection = this.add.graphics({ x: cx, y: cy });
+    drawMirrorSnake(reflection, stage);
+    const human = this.add.graphics({ x: cx, y: cy }).setAlpha(0);
+    drawMirrorHuman(human);
+    const maskShape = this.make.graphics({ x: cx, y: cy, add: false });
+    maskShape.fillStyle(0xffffff);
+    maskShape.fillEllipse(0, 0, 236, 316);
+    const mask = maskShape.createGeometryMask();
+    reflection.setMask(mask);
+    human.setMask(mask);
+    const frame = this.add.graphics({ x: cx, y: cy });
+    frame.lineStyle(7, PAL.gold);
+    frame.strokeEllipse(0, 0, 244, 324);
+    frame.lineStyle(2, PAL.goldDark, 0.8);
+    frame.strokeEllipse(0, 0, 260, 340);
+    const title = this.add.text(400, 478, 'Muda de piel', { ...TITLE, fontSize: '30px', fontStyle: '700' }).setOrigin(0.5);
+    const sub = this.add.text(400, 516, LEVELS[stage - 1].name + ' superada', { ...TEXT, fontSize: '18px', color: PAL.muted }).setOrigin(0.5);
+    layer.add([dim, glass, reflection, human, frame, title, sub]);
+
+    const finish = () => {
+      onDone(); // el escenario nuevo aparece mientras el espejo se desvanece
+      this.tweens.add({
+        targets: layer, alpha: 0, duration: 700,
+        onComplete: () => { layer.destroy(); mask.destroy(); maskShape.destroy(); }
+      });
+    };
+    this.tweens.add({
+      targets: layer, alpha: 1, duration: 450,
+      onComplete: () => this.time.delayedCall(550, () => {
+        this.tweens.add({
+          targets: human, alpha: peak, duration: 140,
+          onComplete: () => this.time.delayedCall(hold, () => {
+            this.tweens.add({
+              targets: human, alpha: 0, duration: 260,
+              onComplete: () => this.time.delayedCall(500, finish)
+            });
+          })
+        });
+      })
+    });
+  }
+
+  // Pasa a la siguiente tierra (o termina si era la última)
+  advanceLevel() {
+    this.gfx.setVisible(true);
+    if (GameState.level >= LEVELS.length) {
+      this.draw();
+      this.busy = false;
+      return this.gameOver(true, 'Recorriste las cinco tierras. La puerta de los recuerdos llegará pronto.');
+    }
+    GameState.level++;
     GameState.materials = 0;
     GameState.save();
-    this.changeScenario(LEVELS[GameState.level - 1].scenario);
+    this.applesSinceMaterial = 0;
+    this.changeScenario(GameState.current().scenario);
+    this.drawSlots();
+    // Si la comida quedó justo donde empieza la serpiente, se cambia de lugar
+    if (this.food && this.snake.some((s) => s.x === this.food.x && s.y === this.food.y)) {
+      this.food = this.spawnFood();
+      this.placeAt(this.foodGfx, this.food);
+    }
+    this.powerCooldown = 5000;
+    this.busy = false;
+    this.draw();
   }
 
-  // Atajo del modo debug (tecla N)
+  // ---------- Escenarios ----------
+
+  // Atajos del modo debug (teclas N y M)
   debugNextLevel() {
-    this.setLevel(this.level + 1);
+    if (this.busy || this.dead) return;
+    if (GameState.level >= LEVELS.length) return debugToast(this, 'Debug: ya estás en la última tierra');
+    this.removeFruit();
+    this.removeMaterial();
+    this.removePower();
+    this.busy = true;
+    this.shedSkin();
+    this.playMirror(() => this.advanceLevel());
+  }
+
+  debugMaterials() {
+    if (this.busy || this.dead) return;
+    this.removeMaterial();
+    GameState.materials = 3;
+    GameState.save();
+    this.drawSlots();
+    this.spawnFruit();
+    debugToast(this, 'Debug: 3 materiales');
   }
 
   changeScenario(index) {
@@ -208,12 +445,12 @@ class SnakeScene extends Phaser.Scene {
     this.time.delayedCall(4000, () => old.ambient.destroy());
 
     this.updateLevelText();
-    this.showBanner('Nivel ' + (this.level + 1) + ' · ' + this.scenario.name);
+    this.showBanner('Nivel ' + GameState.level + ' · ' + this.scenario.name);
     [523, 659, 784].forEach((f, i) => this.time.delayedCall(i * 90, () => beep(this, f, 0.15, 'triangle')));
   }
 
   updateLevelText() {
-    this.levelText.setText('Nivel ' + (this.level + 1) + ' · ' + this.scenario.name);
+    this.levelText.setText('Nivel ' + GameState.level + ' · ' + this.scenario.name);
   }
 
   showBanner(text) {
@@ -319,7 +556,7 @@ class SnakeScene extends Phaser.Scene {
     for (let x = 0; x < COLS; x++) {
       for (let y = 0; y < ROWS; y++) {
         if (this.snake.some((s) => s.x === x && s.y === y)) continue;
-        if (at(this.food, x, y) || at(this.bonus, x, y) || at(this.power, x, y)) continue;
+        if (at(this.food, x, y) || at(this.material, x, y) || at(this.fruit, x, y) || at(this.power, x, y)) continue;
         free.push({ x, y });
       }
     }
@@ -336,34 +573,16 @@ class SnakeScene extends Phaser.Scene {
     obj.setPosition(cell.x * CELL + CELL / 2, cell.y * CELL + CELL / 2);
   }
 
-  spawnBonus() {
-    if (this.bonus) return;
-    const free = this.freeCells();
-    if (!free.length) return;
-    this.bonus = Phaser.Utils.Array.GetRandom(free);
-    this.placeAt(this.bonusGfx, this.bonus);
-    this.bonusGfx.setVisible(true).setAlpha(1);
-    this.floatText(this.bonus.x * CELL + CELL / 2, this.bonus.y * CELL, '¡Fruta del Origen!', CSS.gold);
-    // Se desvanece en los últimos 2 segundos para avisar que se va
-    this.bonusFade = this.tweens.add({ targets: this.bonusGfx, alpha: 0.25, delay: BONUS_TIME - 2000, duration: 2000 });
-    this.bonusTimer = this.time.delayedCall(BONUS_TIME, () => this.removeBonus());
-  }
-
-  removeBonus() {
-    this.bonus = null;
-    this.bonusGfx.setVisible(false);
-    if (this.bonusTimer) this.bonusTimer.remove();
-    if (this.bonusFade) this.bonusFade.stop();
-  }
-
   draw() {
     this.gfx.clear();
-    drawSnake(this.gfx, this.snake, this.dir, this.effects.shield);
+    drawSnake(this.gfx, this.snake, this.dir, this.effects.shield, GameState.level);
   }
 
-  gameOver(won = false) {
+  gameOver(won = false, note = '') {
     this.dead = true;
-    this.removeBonus();
+    // Los materiales de este nivel se conservan (ya están guardados en GameState)
+    this.removeMaterial();
+    this.removeFruit();
     this.removePower();
     this.draw();
 
@@ -386,16 +605,19 @@ class SnakeScene extends Phaser.Scene {
     over(this.add.text(400, 230, won ? '¡Ganaste!' : 'Game Over', {
       ...TITLE, fontSize: '56px'
     }).setOrigin(0.5));
-    over(this.add.text(400, 300, 'Puntos: ' + this.score + '   ·   Nivel ' + (this.level + 1), {
+    over(this.add.text(400, 300, 'Puntos: ' + this.score + '   ·   Nivel ' + GameState.level, {
       ...TEXT, fontSize: '24px', color: CSS.scale
     }).setOrigin(0.5));
+    if (note) {
+      over(this.add.text(400, 345, note, { ...TEXT, fontSize: '18px', wordWrap: { width: 560 }, align: 'center' }).setOrigin(0.5));
+    }
     if (newRecord && this.score > 0) {
-      const rec = over(this.add.text(400, 345, '¡Nuevo récord!', {
+      const rec = over(this.add.text(400, note ? 385 : 345, '¡Nuevo récord!', {
         ...TEXT, fontSize: '22px', fontStyle: '700', color: CSS.goldLight
       }).setOrigin(0.5).setScale(0));
       this.tweens.add({ targets: rec, scale: 1, duration: 400, ease: 'Back.Out' });
     }
-    over(this.add.text(400, 410, 'ESPACIO o toca: reintentar   ·   M: menú', {
+    over(this.add.text(400, 440, 'ESPACIO o toca: reintentar   ·   M: menú', {
       ...TEXT, fontSize: '18px', color: PAL.muted
     }).setOrigin(0.5));
 

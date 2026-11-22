@@ -8,8 +8,7 @@ function debugKey(scene, code) {
   if (code === 'KeyN') {
     if (scene.debugNextLevel) scene.debugNextLevel();
   } else if (code === 'KeyM') {
-    GameState.materials = 3;
-    debugToast(scene, 'Debug: 3 materiales');
+    if (scene.debugMaterials) scene.debugMaterials();
   } else if (code === 'KeyB') {
     debugGo(scene, 'BossScene', 'la batalla final');
   } else if (code === 'KeyR') {

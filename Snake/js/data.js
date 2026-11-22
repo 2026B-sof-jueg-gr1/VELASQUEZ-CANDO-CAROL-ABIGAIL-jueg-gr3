@@ -3,31 +3,34 @@
 
 const STUDIO = { name: 'AMARU STUDIO', members: ['Carol Velásquez'], madeWith: 'Hecho con Phaser 3' };
 
+// Un material: nombre, forma con la que se dibuja (ver drawMaterial en draw.js) y color
+const M = (name, shape, color) => ({ name, shape, color });
+
 // Las cinco tierras, en orden. `scenario` es la posición en SCENARIOS (js/draw.js).
 const LEVELS = [
   {
     id: 'bosque', name: 'Bosque', scenario: 0,
-    materials: ['Semilla', 'Rocío', 'Hoja dorada'],
+    materials: [M('Semilla', 'seed', 0x8b5a2b), M('Rocío', 'drop', 0x7fd6ff), M('Hoja dorada', 'leaf', 0xf2b33d)],
     friend: 'musgo', enemy: 'hormigas', memory: 'guardiana'
   },
   {
     id: 'desierto', name: 'Desierto', scenario: 1,
-    materials: ['Cristal de arena', 'Agua de oasis', 'Pluma de cóndor'],
+    materials: [M('Cristal de arena', 'crystal', 0xe8c36f), M('Agua de oasis', 'drop', 0x2fb7c8), M('Pluma de cóndor', 'feather', 0x2b2b35)],
     friend: 'duna', enemy: 'escorpiones', memory: 'ninez'
   },
   {
     id: 'nieve', name: 'Nieve', scenario: 2,
-    materials: ['Hielo de glaciar', 'Flor de chuquiragua', 'Lana de vicuña'],
+    materials: [M('Hielo de glaciar', 'crystal', 0x9fd8f0), M('Flor de chuquiragua', 'flower', 0xe8762d), M('Lana de vicuña', 'wool', 0xd9b98a)],
     friend: 'escarcha', enemy: 'hielo', memory: 'hermana_enferma'
   },
   {
     id: 'volcan', name: 'Volcán', scenario: 3,
-    materials: ['Piedra pómez', 'Azufre', 'Obsidiana'],
+    materials: [M('Piedra pómez', 'rock', 0xb9b2a6), M('Azufre', 'shards', 0xf1d93a), M('Obsidiana', 'crystal', 0x3a3a4a)],
     friend: 'brasa', enemy: 'lava', memory: 'leyenda'
   },
   {
     id: 'noche', name: 'Noche', scenario: 4,
-    materials: ['Luz de luciérnaga', 'Rocío lunar', 'Flor nocturna'],
+    materials: [M('Luz de luciérnaga', 'orb', 0xd4ff6b), M('Rocío lunar', 'drop', 0xbcd0ff), M('Flor nocturna', 'flower', 0xb48cff)],
     friend: 'luna', enemy: 'murcielagos', memory: 'caminata'
   }
 ];

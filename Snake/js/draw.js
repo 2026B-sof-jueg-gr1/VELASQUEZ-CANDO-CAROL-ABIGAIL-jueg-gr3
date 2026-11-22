@@ -8,10 +8,21 @@ function shade(color, amt) {
   return (Math.round(r + (t - r) * p) << 16) | (Math.round(g + (t - g) * p) << 8) | Math.round(b + (t - b) * p);
 }
 
-// Degradado de la cabeza (verde claro) a la cola (verde oscuro)
-function segmentColor(i, len) {
+// Colores de la serpiente en cada nivel: [cabeza, cola]. Va cambiando de serpiente a persona.
+const SKIN = [0xe3b48c, 0xa87c58];
+const STAGE_COLORS = {
+  1: [HEAD_COLOR, TAIL_COLOR],   // verde normal
+  2: [0xb7e3c4, 0x6aa985],       // escamas más pálidas
+  3: [0xb7e3c4, 0x6aa985],       // (más las manos)
+  4: [0xb7e3c4, 0x6aa985],       // (la cabeza ya es una cara)
+  5: SKIN                         // cuerpo color piel
+};
+
+// Degradado de la cabeza a la cola según el nivel (stage de 1 a 5)
+function segmentColor(i, len, stage = 1) {
   const C = Phaser.Display.Color;
-  const c = C.Interpolate.ColorWithColor(C.ValueToColor(HEAD_COLOR), C.ValueToColor(TAIL_COLOR), Math.max(len - 1, 1), i);
+  const [head, tail] = STAGE_COLORS[stage] || STAGE_COLORS[1];
+  const c = C.Interpolate.ColorWithColor(C.ValueToColor(head), C.ValueToColor(tail), Math.max(len - 1, 1), i);
   return C.GetColor(c.r, c.g, c.b);
 }
 
@@ -23,7 +34,7 @@ function drawSegmentShadow(g, cell) {
 }
 
 // Cada bloque tiene un lado oscuro (grosor), una cara superior y un brillo
-function drawSegment(g, cell, color, i) {
+function drawSegment(g, cell, color, i, stage = 1) {
   const x = cell.x * CELL + 1, y = cell.y * CELL + 1, s = CELL - 2;
   g.fillStyle(shade(color, -0.4));
   g.fillRoundedRect(x, y, s, s, 6);
@@ -31,40 +42,180 @@ function drawSegment(g, cell, color, i) {
   g.fillRoundedRect(x, y, s, s - 4, 6);
   g.fillStyle(shade(color, 0.5), 0.8);
   g.fillRoundedRect(x + 3, y + 2, s - 8, 4, 2);
-  // Rombo dorado en la espalda, uno sí y uno no (como el dibujo de las escamas de la landing)
-  if (i > 0 && i % 2 === 0) {
+  // Rombo dorado en la espalda (como el dibujo de las escamas de la landing).
+  // En el nivel 5 casi no quedan escamas.
+  const every = stage >= 5 ? 4 : 2;
+  if (i > 0 && i % every === 0) {
     const cx = x + s / 2, cy = y + (s - 4) / 2;
-    g.fillStyle(PAL.gold, 0.7);
+    g.fillStyle(PAL.gold, stage >= 5 ? 0.4 : 0.7);
     g.fillPoints([{ x: cx, y: cy - 4 }, { x: cx + 3.5, y: cy }, { x: cx, y: cy + 4 }, { x: cx - 3.5, y: cy }], true);
   }
 }
 
-function drawSnake(g, snake, dir, shield) {
+function drawSnake(g, snake, dir, shield, stage = 1) {
   snake.forEach((s) => drawSegmentShadow(g, s));
-  for (let i = snake.length - 1; i >= 0; i--) drawSegment(g, snake[i], segmentColor(i, snake.length), i);
+  for (let i = snake.length - 1; i >= 0; i--) {
+    // Desde el nivel 4 la cabeza es de piel (una cara)
+    const color = i === 0 && stage >= 4 ? SKIN[0] : segmentColor(i, snake.length, stage);
+    drawSegment(g, snake[i], color, i, stage);
+  }
 
   const h = snake[0];
   const cx = h.x * CELL + CELL / 2;
   const cy = h.y * CELL + CELL / 2 - 2;
 
-  // Contorno dorado fino en la cabeza
-  g.lineStyle(1.5, PAL.gold, 0.7);
+  // Contorno fino en la cabeza
+  g.lineStyle(1.5, stage >= 4 ? 0x7a5338 : PAL.gold, 0.7);
   g.strokeRoundedRect(h.x * CELL + 1, h.y * CELL + 1, CELL - 2, CELL - 6, 6);
+
+  // Nivel 3 en adelante: dos manitas en los costados de la cabeza
+  if (stage >= 3) {
+    for (const side of [-1, 1]) {
+      const hx = cx - dir.y * side * 11 + dir.x * 1, hy = cy + dir.x * side * 11 + dir.y * 1 + 2;
+      g.fillStyle(SKIN[0]);
+      g.fillCircle(hx, hy, 3.6);
+      g.lineStyle(1, 0x7a5338, 0.8);
+      g.strokeCircle(hx, hy, 3.6);
+      g.fillStyle(0x7a5338, 0.8); // deditos
+      g.fillCircle(hx + dir.x * 3, hy + dir.y * 3, 1);
+    }
+  }
 
   if (shield) {
     g.lineStyle(2, PAL.gold, 0.9);
     g.strokeCircle(cx, cy + 2, 13);
   }
 
-  // Ojos dorados con pupila vertical de serpiente, mirando hacia donde avanza
   for (const side of [-1, 1]) {
     const ex = cx + dir.x * 3 - dir.y * side * 4;
     const ey = cy + dir.y * 3 + dir.x * side * 4;
-    g.fillStyle(0xf2c14e);
-    g.fillCircle(ex, ey, 3.2);
-    g.fillStyle(PAL.bg);
-    if (dir.x !== 0) g.fillEllipse(ex + dir.x * 0.5, ey, 3.2, 1.2); else g.fillEllipse(ex, ey + dir.y * 0.5, 1.2, 3.2);
+    if (stage >= 4) {
+      // Ojos humanos: blanco, iris café y pupila
+      g.fillStyle(0xffffff);
+      g.fillCircle(ex, ey, 3.4);
+      g.fillStyle(0x6b4423);
+      g.fillCircle(ex + dir.x * 0.8, ey + dir.y * 0.8, 1.9);
+      g.fillStyle(PAL.bg);
+      g.fillCircle(ex + dir.x * 0.9, ey + dir.y * 0.9, 0.9);
+    } else {
+      // Ojos dorados con pupila vertical de serpiente, mirando hacia donde avanza
+      g.fillStyle(0xf2c14e);
+      g.fillCircle(ex, ey, 3.2);
+      g.fillStyle(PAL.bg);
+      if (dir.x !== 0) g.fillEllipse(ex + dir.x * 0.5, ey, 3.2, 1.2); else g.fillEllipse(ex, ey + dir.y * 0.5, 1.2, 3.2);
+    }
   }
+  // Boquita de la cara
+  if (stage >= 4) {
+    g.lineStyle(1.2, 0x7a3a2a, 0.9);
+    const mx = cx + dir.x * 6, my = cy + dir.y * 6 + 2;
+    g.lineBetween(mx - dir.y * 2.5, my + dir.x * 2.5, mx + dir.y * 2.5, my - dir.x * 2.5);
+  }
+}
+
+// ---------- Materiales de cada tierra ----------
+
+// Cada forma se dibuja alrededor de (0,0), de unos 9 px de radio, con un halo suave para que se vea
+function drawMaterial(g, shape, color) {
+  const dark = shade(color, -0.45), light = shade(color, 0.6);
+  g.fillStyle(0xffffff, 0.16);
+  g.fillCircle(0, 0, 12);
+  g.fillStyle(0x000000, 0.3);
+  g.fillEllipse(1.5, 8, 14, 5);
+  if (shape === 'seed') {
+    g.fillStyle(dark); g.fillEllipse(0, 1, 11, 15);
+    g.fillStyle(color); g.fillEllipse(0, 0, 9, 13);
+    g.fillStyle(light, 0.8); g.fillEllipse(-2, -3, 3, 5);
+  } else if (shape === 'drop') {
+    g.fillStyle(dark); g.fillCircle(0, 3.5, 7);
+    g.fillStyle(color); g.fillCircle(0, 3, 6); g.fillTriangle(-5.3, 1.5, 5.3, 1.5, 0, -9);
+    g.fillStyle(light, 0.85); g.fillCircle(-2, 2, 1.8);
+  } else if (shape === 'leaf') {
+    const pts = [{ x: 0, y: -9 }, { x: 6, y: -2 }, { x: 5, y: 5 }, { x: 0, y: 9 }, { x: -5, y: 5 }, { x: -6, y: -2 }];
+    g.fillStyle(color); g.fillPoints(pts, true);
+    g.lineStyle(1.3, dark); g.lineBetween(0, -7, 0, 9);
+  } else if (shape === 'crystal') {
+    const pts = [{ x: 0, y: -9 }, { x: 6, y: -3 }, { x: 4, y: 8 }, { x: -4, y: 8 }, { x: -6, y: -3 }];
+    g.fillStyle(dark); g.fillPoints(pts, true);
+    g.fillStyle(color); g.fillPoints([{ x: 0, y: -8 }, { x: 5, y: -3 }, { x: 3, y: 6 }, { x: -3, y: 6 }, { x: -5, y: -3 }], true);
+    g.fillStyle(light, 0.7); g.fillTriangle(-4, -3, 0, -8, 0, 2);
+  } else if (shape === 'feather') {
+    g.fillStyle(color);
+    g.fillPoints([{ x: -2, y: -9 }, { x: 5, y: -3 }, { x: 4, y: 5 }, { x: -1, y: 9 }, { x: -4, y: 2 }, { x: -5, y: -4 }], true);
+    g.lineStyle(1.3, light); g.lineBetween(-3, 8, 2, -7);
+  } else if (shape === 'flower') {
+    for (let k = 0; k < 5; k++) {
+      const a = -Math.PI / 2 + (k * 2 * Math.PI) / 5;
+      g.fillStyle(color); g.fillCircle(Math.cos(a) * 5, Math.sin(a) * 5, 3.6);
+    }
+    g.fillStyle(PAL.goldLight); g.fillCircle(0, 0, 2.6);
+  } else if (shape === 'wool') {
+    g.fillStyle(dark); g.fillCircle(0, 4, 6);
+    g.fillStyle(color); g.fillCircle(-3.5, -1, 5); g.fillCircle(3.5, -1, 5); g.fillCircle(0, 3, 5.5);
+    g.fillStyle(light, 0.8); g.fillCircle(-3, -3, 1.8); g.fillCircle(3, -3, 1.8);
+  } else if (shape === 'rock') {
+    g.fillStyle(dark);
+    g.fillPoints([{ x: -7, y: 3 }, { x: -4, y: -6 }, { x: 3, y: -7 }, { x: 7, y: 0 }, { x: 4, y: 8 }, { x: -4, y: 7 }], true);
+    g.fillStyle(color);
+    g.fillPoints([{ x: -6, y: 1 }, { x: -3, y: -6 }, { x: 3, y: -6 }, { x: 6, y: 0 }, { x: 3, y: 5 }, { x: -4, y: 5 }], true);
+  } else if (shape === 'shards') {
+    g.fillStyle(dark); g.fillTriangle(-8, 7, -2, 7, -5, -4);
+    g.fillStyle(color);
+    g.fillTriangle(-8, 7, -2, 7, -5, -3); g.fillTriangle(-3, 7, 5, 7, 1, -9); g.fillTriangle(3, 7, 9, 7, 6, -1);
+    g.fillStyle(light, 0.7); g.fillTriangle(-1, 6, 1, 6, 0, -5);
+  } else if (shape === 'orb') {
+    g.fillStyle(color, 0.35); g.fillCircle(0, 0, 11);
+    g.fillStyle(color); g.fillCircle(0, 0, 5.5);
+    g.fillStyle(0xffffff, 0.9); g.fillCircle(-1.5, -1.5, 2);
+  }
+}
+
+// ---------- El espejo de la muda ----------
+
+// Reflejo de la serpiente en el espejo (centrado en 0,0, dentro de un óvalo de 240 x 320)
+function drawMirrorSnake(g, stage) {
+  const [head, tail] = STAGE_COLORS[stage] || STAGE_COLORS[1];
+  const C = Phaser.Display.Color;
+  const mix = (t) => { const c = C.Interpolate.ColorWithColor(C.ValueToColor(head), C.ValueToColor(tail), 100, t * 100); return C.GetColor(c.r, c.g, c.b); };
+  // Cuerpo en S, de la cola hacia la cabeza
+  for (let k = 0; k <= 26; k++) {
+    const t = k / 26;
+    const x = Math.sin(t * 5.2) * 36 * (1 - t * 0.35), y = 128 - t * 118, r = 21 - t * 3;
+    g.fillStyle(shade(mix(1 - t), -0.35)); g.fillCircle(x + 1, y + 2, r);
+    g.fillStyle(mix(1 - t)); g.fillCircle(x, y, r);
+    if (k % 3 === 0 && stage < 5) { g.fillStyle(PAL.gold, 0.6); g.fillCircle(x, y - 2, 3.2); }
+  }
+  // Cabeza
+  const faceColor = stage >= 4 ? SKIN[0] : head;
+  g.fillStyle(shade(faceColor, -0.35)); g.fillEllipse(1, -14, 78, 62);
+  g.fillStyle(faceColor); g.fillEllipse(0, -17, 74, 58);
+  g.fillStyle(shade(faceColor, 0.5), 0.5); g.fillEllipse(-8, -30, 34, 12);
+  if (stage >= 3) {
+    for (const s of [-1, 1]) { g.fillStyle(SKIN[0]); g.fillCircle(s * 44, -6, 8); g.lineStyle(1.5, 0x7a5338, 0.8); g.strokeCircle(s * 44, -6, 8); }
+  }
+  for (const s of [-1, 1]) {
+    const ex = s * 17, ey = -22;
+    if (stage >= 4) {
+      g.fillStyle(0xffffff); g.fillCircle(ex, ey, 9);
+      g.fillStyle(0x6b4423); g.fillCircle(ex, ey + 1, 5);
+      g.fillStyle(PAL.bg); g.fillCircle(ex, ey + 1, 2.4);
+    } else {
+      g.fillStyle(0xf2c14e); g.fillCircle(ex, ey, 9);
+      g.fillStyle(PAL.bg); g.fillEllipse(ex, ey, 3, 12);
+    }
+  }
+  if (stage >= 4) { g.lineStyle(2, 0x7a3a2a, 0.9); g.lineBetween(-10, 2, 10, 2); }
+  else { g.lineStyle(2, 0xd8433a); g.lineBetween(0, 4, 0, 20); g.lineBetween(0, 20, -6, 28); g.lineBetween(0, 20, 6, 28); }
+}
+
+// Silueta humana que aparece un instante en el reflejo (la cabeza queda sobre la de la serpiente)
+function drawMirrorHuman(g) {
+  g.fillStyle(0xefe6d2);
+  g.fillEllipse(0, -24, 58, 70);
+  g.fillPoints([
+    { x: -14, y: 4 }, { x: 14, y: 4 }, { x: 24, y: 20 }, { x: 72, y: 36 }, { x: 112, y: 72 },
+    { x: 126, y: 175 }, { x: -126, y: 175 }, { x: -112, y: 72 }, { x: -72, y: 36 }, { x: -24, y: 20 }
+  ], true);
 }
 
 // Los objetos se dibujan alrededor de (0,0) para poder moverlos y escalarlos

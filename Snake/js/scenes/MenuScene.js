@@ -31,9 +31,9 @@ class MenuScene extends Phaser.Scene {
     this.add.rectangle(400, 318, 560, 108, PAL.bg, 0.85).setStrokeStyle(2, PAL.gold, 0.55).setDepth(DEPTH.hud);
     front(this.add.text(400, 318, [
       'Flechas / WASD / deslizar: moverte   ·   P o Esc: pausa',
-      'La Fruta del Origen dorada da +50 y solo dura 8 segundos',
-      'Poderes: Lento · Puntos x2 · Escudo · Tijeras',
-      'Cada 100 puntos viajas a una nueva tierra'
+      'Cada 5 manzanas aparece un material de la tierra: junta 3',
+      'La Fruta del Origen dura solo 8 segundos: cómela y muda de piel',
+      'Poderes: Lento · Puntos x2 · Escudo · Tijeras'
     ], { ...TEXT, fontSize: '16px', lineSpacing: 6, align: 'center' }));
 
     // Las cinco tierras, con los mismos colores de la landing
