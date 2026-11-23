@@ -1,5 +1,5 @@
 // Modo debug: solo se activa con ?debug=1 en la URL. Sirve para probar y para la presentación.
-//   N = siguiente nivel   M = dar los 3 materiales   B = batalla final   R = puzzle de recuerdos
+//   N = siguiente nivel   M = dar los 3 materiales   G = cámara del recuerdo   B = batalla final   R = puzzle de recuerdos
 const DEBUG = new URLSearchParams(window.location.search).get('debug') === '1';
 
 // Atajos que funcionan dentro de una escena de juego. Devuelve true si la tecla era de debug.
@@ -9,6 +9,8 @@ function debugKey(scene, code) {
     if (scene.debugNextLevel) scene.debugNextLevel();
   } else if (code === 'KeyM') {
     if (scene.debugMaterials) scene.debugMaterials();
+  } else if (code === 'KeyG') {
+    scene.scene.start('MemoryRingScene', { memory: GameState.current().memory, after: 'debug' });
   } else if (code === 'KeyB') {
     debugGo(scene, 'BossScene', 'la batalla final');
   } else if (code === 'KeyR') {

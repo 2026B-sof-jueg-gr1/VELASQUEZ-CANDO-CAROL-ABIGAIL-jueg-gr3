@@ -24,7 +24,7 @@ class MenuScene extends Phaser.Scene {
     front(this.add.text(400, 205, 'la Fruta del Origen', {
       ...TITLE, fontSize: '24px', fontStyle: '700', color: PAL.text, stroke: '#0b1410', strokeThickness: 5
     }));
-    front(this.add.text(400, 243, 'Fase inicial · Come, crece y muda tu piel', {
+    front(this.add.text(400, 243, 'Come, crece y muda tu piel', {
       ...TEXT, fontSize: '19px', stroke: '#0b1410', strokeThickness: 4
     }));
 
@@ -114,6 +114,7 @@ class MenuScene extends Phaser.Scene {
     }
     this.started = true;
     beep(this, 440, 0.12, 'square', 880);
-    this.scene.start('SnakeScene');
+    // Partida nueva: intro de la historia. Continuar: solo lo que dice la guardiana de esa tierra.
+    goToLevelStory(this, opt.id === 'new' ? STORY.intro : []);
   }
 }

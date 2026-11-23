@@ -78,6 +78,9 @@ class SnakeScene extends Phaser.Scene {
       this.turn(Math.abs(dx) > Math.abs(dy) ? { x: Math.sign(dx), y: 0 } : { x: 0, y: Math.sign(dy) });
     });
 
+    this.cameras.main.fadeIn(450, 11, 20, 16);
+    this.showBanner('Nivel ' + GameState.level + ' · ' + this.scenario.name);
+
     // Si moriste con los 3 materiales, la Fruta del Origen vuelve a aparecer al reintentar
     if (GameState.materials >= 3) this.spawnFruit();
     this.draw();
@@ -313,7 +316,7 @@ class SnakeScene extends Phaser.Scene {
     this.removePower();
     this.busy = true;
     this.shedSkin();
-    this.time.delayedCall(700, () => this.playMirror(() => this.advanceLevel()));
+    this.time.delayedCall(700, () => this.playMirror(() => this.goToMemory()));
   }
 
   // La piel vieja se desprende y cae; la serpiente vuelve a empezar con 3 segmentos
@@ -364,13 +367,7 @@ class SnakeScene extends Phaser.Scene {
     const sub = this.add.text(400, 516, LEVELS[stage - 1].name + ' superada', { ...TEXT, fontSize: '18px', color: PAL.muted }).setOrigin(0.5);
     layer.add([dim, glass, reflection, human, frame, title, sub]);
 
-    const finish = () => {
-      onDone(); // el escenario nuevo aparece mientras el espejo se desvanece
-      this.tweens.add({
-        targets: layer, alpha: 0, duration: 700,
-        onComplete: () => { layer.destroy(); mask.destroy(); maskShape.destroy(); }
-      });
-    };
+    const finish = onDone;
     this.tweens.add({
       targets: layer, alpha: 1, duration: 450,
       onComplete: () => this.time.delayedCall(550, () => {
@@ -387,28 +384,12 @@ class SnakeScene extends Phaser.Scene {
     });
   }
 
-  // Pasa a la siguiente tierra (o termina si era la última)
-  advanceLevel() {
-    this.gfx.setVisible(true);
-    if (GameState.level >= LEVELS.length) {
-      this.draw();
-      this.busy = false;
-      return this.gameOver(true, 'Recorriste las cinco tierras. La puerta de los recuerdos llegará pronto.');
-    }
-    GameState.level++;
-    GameState.materials = 0;
-    GameState.save();
-    this.applesSinceMaterial = 0;
-    this.changeScenario(GameState.current().scenario);
-    this.drawSlots();
-    // Si la comida quedó justo donde empieza la serpiente, se cambia de lugar
-    if (this.food && this.snake.some((s) => s.x === this.food.x && s.y === this.food.y)) {
-      this.food = this.spawnFood();
-      this.placeAt(this.foodGfx, this.food);
-    }
-    this.powerCooldown = 5000;
-    this.busy = false;
-    this.draw();
+  // Después del espejo viene la cámara del recuerdo de esta tierra. Al resolverla se pasa a la siguiente.
+  goToMemory() {
+    this.cameras.main.fadeOut(500, 11, 20, 16);
+    this.cameras.main.once('camerafadeoutcomplete', () => {
+      this.scene.start('MemoryRingScene', { memory: GameState.current().memory, rings: ringsForLevel(GameState.level), after: 'fruit' });
+    });
   }
 
   // ---------- Escenarios ----------
@@ -417,12 +398,10 @@ class SnakeScene extends Phaser.Scene {
   debugNextLevel() {
     if (this.busy || this.dead) return;
     if (GameState.level >= LEVELS.length) return debugToast(this, 'Debug: ya estás en la última tierra');
-    this.removeFruit();
-    this.removeMaterial();
-    this.removePower();
-    this.busy = true;
-    this.shedSkin();
-    this.playMirror(() => this.advanceLevel());
+    GameState.level++;
+    GameState.materials = 0;
+    GameState.save();
+    this.scene.restart();
   }
 
   debugMaterials() {
@@ -435,27 +414,13 @@ class SnakeScene extends Phaser.Scene {
     debugToast(this, 'Debug: 3 materiales');
   }
 
-  changeScenario(index) {
-    const old = this.scenario;
-    this.scenario = createScenario(this, index);
-    // El nuevo fondo aparece poco a poco encima del anterior
-    this.scenario.image.setAlpha(0);
-    this.tweens.add({ targets: this.scenario.image, alpha: 1, duration: 1000, onComplete: () => old.image.destroy() });
-    old.ambient.stop();
-    this.time.delayedCall(4000, () => old.ambient.destroy());
-
-    this.updateLevelText();
-    this.showBanner('Nivel ' + GameState.level + ' · ' + this.scenario.name);
-    [523, 659, 784].forEach((f, i) => this.time.delayedCall(i * 90, () => beep(this, f, 0.15, 'triangle')));
-  }
-
   updateLevelText() {
     this.levelText.setText('Nivel ' + GameState.level + ' · ' + this.scenario.name);
   }
 
   showBanner(text) {
     const t = this.add.text(400, 300, text, {
-      ...TITLE, fontSize: '40px', fontStyle: '700', stroke: '#0b1410', strokeThickness: 8
+      ...TEXT, fontSize: '38px', fontStyle: '800', color: CSS.gold, stroke: '#0b1410', strokeThickness: 8
     }).setOrigin(0.5).setDepth(DEPTH.banner).setAlpha(0).setScale(0.6);
     this.tweens.add({
       targets: t, alpha: 1, scale: 1, duration: 300, ease: 'Back.Out',

@@ -62,6 +62,12 @@ const GameState = {
     try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* sin storage */ }
   },
 
+  // Guarda un recuerdo recuperado (una sola vez) y la partida
+  addMemory(id) {
+    if (MEMORIES[id] && !this.memories.includes(id)) this.memories.push(id);
+    this.save();
+  },
+
   // Datos del nivel actual (nombre, materiales, amigo...)
   current() { return LEVELS[this.level - 1]; }
 };

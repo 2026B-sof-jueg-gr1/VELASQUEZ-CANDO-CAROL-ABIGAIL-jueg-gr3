@@ -57,3 +57,29 @@ const MEMORIES = {
   arbol: { orden: 9, titulo: 'Inti frente al árbol sagrado' },
   guardiana: { orden: 10, titulo: 'El rostro de la guardiana al descubrirlo mordiendo la fruta' }
 };
+
+// Textos de la historia. Cada página puede llevar: text, art (ilustración), speaker (quién habla) y title.
+const STORY = {
+  // Intro de una partida nueva. No revela por qué Inti entró al bosque.
+  intro: [
+    { art: 'bosque_borde', text: 'Inti, un explorador, llegó al borde del bosque prohibido. Dicen que nadie sale de allí siendo el mismo.' },
+    { art: 'mordisco', text: 'Entre las raíces encontró un árbol sagrado. Sin pensarlo dos veces, mordió su fruta.' },
+    { art: 'guardiana_aparece', text: 'Entonces apareció la guardiana del bosque. Sus ojos brillaban como oro viejo.' },
+    { art: 'serpiente', speaker: 'La guardiana', text: '«Tomaste lo que no era tuyo. Vivirás como serpiente.» Y su forma humana se rompió en cinco fragmentos.' },
+    { art: 'tierras', text: 'Cada fragmento duerme en una tierra distinta: el bosque, el desierto, la nieve, el volcán y la noche.' },
+    { art: 'fruta_origen', speaker: 'La guardiana', text: '«En cada una crece una Fruta del Origen. Solo brota si le ofreces tres materiales de ese lugar. Cómela y recuperarás un pedazo de ti.»' }
+  ],
+  // Lo que dice la guardiana antes de cada nivel (en el mismo orden que LEVELS)
+  levels: [
+    'Aquí empezó tu falta. Reúne la semilla, el rocío y la hoja dorada.',
+    'El desierto no perdona a quien camina sin rumbo. Busca el cristal de arena, el agua del oasis y la pluma de cóndor.',
+    'En las alturas el frío congela hasta los recuerdos. Hielo de glaciar, flor de chuquiragua y lana de vicuña te esperan.',
+    'El volcán quema lo que sobra y deja lo verdadero. Piedra pómez, azufre y obsidiana.',
+    'La última tierra es la más oscura. Luz de luciérnaga, rocío lunar y flor nocturna.'
+  ],
+  // Provisional: se reemplaza cuando exista el puzzle de la puerta
+  finale: [
+    { art: 'fruta_origen', text: 'Recorriste las cinco tierras y recuperaste cinco recuerdos. Pero la puerta de regreso aún no se abre.' },
+    { speaker: 'La guardiana', text: '«Vuelve pronto, Inti. Todavía te falta ordenar tu memoria.»' }
+  ]
+};
