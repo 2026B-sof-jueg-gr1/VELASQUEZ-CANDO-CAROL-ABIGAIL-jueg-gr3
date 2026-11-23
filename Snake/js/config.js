@@ -2,6 +2,9 @@
 const CELL = 20;
 const COLS = 40; // 800 / 20
 const ROWS = 30; // 600 / 20
+const MARGIN = CELL;  // el anillo exterior (marco de piedras o brillo) mide una celda a cada lado
+const GAME_W = COLS * CELL + MARGIN * 2; // 840
+const GAME_H = ROWS * CELL + MARGIN * 2; // 640
 
 // Paleta de Amaru: la misma que usa la landing page (styles.css)
 const PAL = {

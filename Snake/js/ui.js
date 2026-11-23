@@ -22,3 +22,9 @@ const TEXT = { fontFamily: FONT_BODY, color: PAL.text };
 const TITLE = { fontFamily: FONT_TITLE, color: CSS.gold, fontStyle: '900' };
 const HUD_STYLE = { ...TEXT, fontSize: '18px', backgroundColor: 'rgba(11,20,16,0.78)', padding: { x: 10, y: 4 } };
 
+
+// Las escenas se diseñaron en 800 x 600. El lienzo mide 840 x 640 (con el anillo del marco),
+// así que se corre la cámara una celda: las coordenadas de siempre siguen valiendo.
+function frameCamera(scene) {
+  scene.cameras.main.setScroll(-MARGIN, -MARGIN);
+}

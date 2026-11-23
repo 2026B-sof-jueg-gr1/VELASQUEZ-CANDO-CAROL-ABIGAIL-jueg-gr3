@@ -303,19 +303,6 @@ function drawPatches(g, rnd, color, alpha, count) {
   }
 }
 
-function drawRock(g, x, y, color, cap) {
-  g.fillStyle(0x000000, 0.3);
-  g.fillEllipse(x + 2, y + 4, 14, 6);
-  g.fillStyle(shade(color, -0.3));
-  g.fillEllipse(x, y + 1, 12, 8);
-  g.fillStyle(color);
-  g.fillEllipse(x, y, 11, 6);
-  if (cap) {
-    g.fillStyle(cap);
-    g.fillEllipse(x, y - 2, 9, 3);
-  }
-}
-
 function drawVignette(g) {
   for (let i = 0; i < 10; i++) {
     g.lineStyle(8, 0x000000, 0.035 * (10 - i));
@@ -350,7 +337,6 @@ function decorForest(g, rnd) {
     g.fillCircle(x - 2, y - 4, 1);
     g.fillCircle(x + 2, y - 3, 1);
   }
-  for (let i = 0; i < 12; i++) drawRock(g, rnd.between(0, 800), rnd.between(0, 600), 0x8e9a8c);
   for (let i = 0; i < 25; i++) {
     g.fillStyle(rnd.pick([0xd35400, 0xe67e22, 0xb7950b]), 0.7);
     g.fillEllipse(rnd.between(0, 800), rnd.between(0, 600), 7, 4);
@@ -377,7 +363,6 @@ function decorDesert(g, rnd) {
     g.fillStyle(0x58d68d, 0.6);
     g.fillRect(x - 1, y - 10, 1.5, 14);
   }
-  for (let i = 0; i < 35; i++) drawRock(g, rnd.between(0, 800), rnd.between(0, 600), 0xa0826d);
 }
 
 function decorSnow(g, rnd) {
@@ -403,7 +388,6 @@ function decorSnow(g, rnd) {
       g.fillTriangle(x - w / 4, top + 1, x, top - 4, x + w / 4, top + 1);
     }
   }
-  for (let i = 0; i < 15; i++) drawRock(g, rnd.between(0, 800), rnd.between(0, 600), 0x7f8c8d, 0xffffff);
 }
 
 function decorVolcano(g, rnd) {
@@ -430,7 +414,6 @@ function decorVolcano(g, rnd) {
     g.lineStyle(2, 0xffa502, 0.9);
     g.strokePoints(pts);
   }
-  for (let i = 0; i < 25; i++) drawRock(g, rnd.between(0, 800), rnd.between(0, 600), 0x4a3b3b);
 }
 
 function decorNight(g, rnd) {
@@ -451,7 +434,6 @@ function decorNight(g, rnd) {
     g.fillStyle(0xffffff, 0.8);
     g.fillCircle(x - 2, y - 4, 1);
   }
-  for (let i = 0; i < 12; i++) drawRock(g, rnd.between(0, 800), rnd.between(0, 600), 0x4b5d67);
 }
 
 const SCENARIOS = [

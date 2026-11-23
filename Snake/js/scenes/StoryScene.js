@@ -13,8 +13,9 @@ class StoryScene extends Phaser.Scene {
   }
 
   create() {
+    frameCamera(this);
     this.cameras.main.fadeIn(500, 11, 20, 16);
-    this.add.rectangle(400, 300, 800, 600, PAL.bg);
+    this.add.rectangle(400, 300, GAME_W, GAME_H, PAL.bg);
     this.add.circle(400, 215, 190, PAL.gold, 0.05);
 
     this.artImage = null;

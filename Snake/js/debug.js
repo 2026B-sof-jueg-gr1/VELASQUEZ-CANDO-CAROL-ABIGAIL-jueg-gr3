@@ -1,5 +1,6 @@
 // Modo debug: solo se activa con ?debug=1 en la URL. Sirve para probar y para la presentación.
 //   N = siguiente nivel   M = dar los 3 materiales   G = cámara del recuerdo   B = batalla final   R = puzzle de recuerdos
+//   V = validar los mapas de las 5 tierras (resultado en la consola)
 const DEBUG = new URLSearchParams(window.location.search).get('debug') === '1';
 
 // Atajos que funcionan dentro de una escena de juego. Devuelve true si la tecla era de debug.
@@ -11,6 +12,9 @@ function debugKey(scene, code) {
     if (scene.debugMaterials) scene.debugMaterials();
   } else if (code === 'KeyG') {
     scene.scene.start('MemoryRingScene', { memory: GameState.current().memory, after: 'debug' });
+  } else if (code === 'KeyV') {
+    const ok = validateAllWorlds();
+    debugToast(scene, ok ? 'Validador: los 5 niveles pasan' : 'Validador: hay avisos (consola)');
   } else if (code === 'KeyB') {
     debugGo(scene, 'BossScene', 'la batalla final');
   } else if (code === 'KeyR') {

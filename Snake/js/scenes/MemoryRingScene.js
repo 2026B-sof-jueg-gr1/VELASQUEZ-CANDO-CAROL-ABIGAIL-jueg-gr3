@@ -11,6 +11,7 @@ class MemoryRingScene extends Phaser.Scene {
   }
 
   create() {
+    frameCamera(this);
     this.cameras.main.fadeIn(500, 11, 20, 16);
     const id = this.cfg.memory || 'ninez';
     this.memory = MEMORIES[id];
@@ -23,7 +24,7 @@ class MemoryRingScene extends Phaser.Scene {
     this.cy = 268;
     this.R = 140;
 
-    this.add.rectangle(400, 300, 800, 600, PAL.bg);
+    this.add.rectangle(400, 300, GAME_W, GAME_H, PAL.bg);
     this.add.circle(this.cx, this.cy, 175, PAL.gold, 0.06);
     this.add.text(400, 40, 'Recuerdo', { ...TITLE, fontSize: '30px', fontStyle: '700' }).setOrigin(0.5);
     this.subText = this.add.text(400, 78, 'Gira los anillos hasta que la imagen encaje', { ...TEXT, fontSize: '18px', color: PAL.muted }).setOrigin(0.5);
@@ -68,7 +69,7 @@ class MemoryRingScene extends Phaser.Scene {
       if (this.pressedButton) { this.pressedButton = false; return; }
       if (this.done) return this.proceed();
       const dx = p.upX - p.downX, dy = p.upY - p.downY;
-      const ring = this.ringAt(p.downX, p.downY);
+      const ring = this.ringAt(p.downX - MARGIN, p.downY - MARGIN);
       if (Math.max(Math.abs(dx), Math.abs(dy)) < 20) {
         if (ring >= 0) this.select(ring);
       } else if (Math.abs(dx) > Math.abs(dy) && ring >= 0) {

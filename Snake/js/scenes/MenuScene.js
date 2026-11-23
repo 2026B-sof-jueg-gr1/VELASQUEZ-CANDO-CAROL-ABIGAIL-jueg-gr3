@@ -4,6 +4,7 @@ class MenuScene extends Phaser.Scene {
   }
 
   create() {
+    frameCamera(this);
     makeTextures(this);
     createScenario(this, 0);
 

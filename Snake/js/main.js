@@ -1,8 +1,8 @@
 // Arranque del juego
 const config = {
   type: Phaser.AUTO,
-  width: 800,
-  height: 600,
+  width: GAME_W,
+  height: GAME_H,
   parent: 'game',
   backgroundColor: '#0b1410',
   scale: {

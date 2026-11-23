@@ -29,8 +29,8 @@
       width: 100vw;
       height: calc(100vh - 52px);
       height: calc(100dvh - 52px);
-      max-width: 800px;
-      max-height: 600px;
+      max-width: 840px;
+      max-height: 640px;
       border: 2px solid var(--line);
       border-radius: 10px;
       box-shadow: 0 0 0 1px rgba(242, 179, 61, .25), 0 18px 50px rgba(0, 0, 0, .55);
@@ -41,7 +41,7 @@
     .back a { color: var(--gold); font-weight: 700; display: inline-block; padding: 4px 6px; }
     .back a:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; border-radius: 6px; }
     /* En pantallas bajas (como el marco de itch.io) el juego usa todo el alto y se oculta el enlace */
-    @media (max-height: 660px) {
+    @media (max-height: 700px) {
       .back { display: none; }
       #game { height: 100vh; height: 100dvh; border: 0; border-radius: 0; box-shadow: none; }
     }
@@ -55,6 +55,7 @@
   <script src="js/state.js"></script>
   <script src="js/debug.js"></script>
   <script src="js/draw.js"></script>
+  <script src="js/world.js"></script>
   <script src="js/memories.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/scenes/MenuScene.js"></script>

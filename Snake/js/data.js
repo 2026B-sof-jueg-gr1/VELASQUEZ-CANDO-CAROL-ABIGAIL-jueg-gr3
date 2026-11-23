@@ -6,32 +6,54 @@ const STUDIO = { name: 'AMARU STUDIO', members: ['Carol Velásquez'], madeWith: 
 // Un material: nombre, forma con la que se dibuja (ver drawMaterial en draw.js) y color
 const M = (name, shape, color) => ({ name, shape, color });
 
+
+// ---- Mapas de cada tierra: bordes y piedras, colocados a mano ----
+// Coordenadas de celda: x de 0 a 39, y de 0 a 29. La orilla de afuera (x -1 / 40, y -1 / 30) es solo el marco.
+// edges: 'open' = se cruza por toda la orilla, 'closed' = pared de piedras, 'gap' = pared con huecos.
+// gapsX = columnas de los huecos de arriba y abajo (iguales en los dos lados); gapsY = filas de los huecos de izquierda y derecha.
+const hbar = (y, x0, x1) => { const r = []; for (let x = x0; x <= x1; x++) r.push([x, y]); return r; };
+const vbar = (x, y0, y1) => { const r = []; for (let y = y0; y <= y1; y++) r.push([x, y]); return r; };
+const OPEN_EDGES = { T: 'open', B: 'open', L: 'open', R: 'open' };
+const GAP_EDGES = { T: 'gap', B: 'gap', L: 'gap', R: 'gap' };
+
 // Las cinco tierras, en orden. `scenario` es la posición en SCENARIOS (js/draw.js).
 const LEVELS = [
   {
     id: 'bosque', name: 'Bosque', scenario: 0,
     materials: [M('Semilla', 'seed', 0x8b5a2b), M('Rocío', 'drop', 0x7fd6ff), M('Hoja dorada', 'leaf', 0xf2b33d)],
-    friend: 'musgo', enemy: 'hormigas', memory: 'guardiana'
+    friend: 'musgo', enemy: 'hormigas', memory: 'guardiana',
+    edges: OPEN_EDGES, gapsX: [], gapsY: [], rocks: [],
   },
   {
     id: 'desierto', name: 'Desierto', scenario: 1,
     materials: [M('Cristal de arena', 'crystal', 0xe8c36f), M('Agua de oasis', 'drop', 0x2fb7c8), M('Pluma de cóndor', 'feather', 0x2b2b35)],
-    friend: 'duna', enemy: 'escorpiones', memory: 'ninez'
+    friend: 'duna', enemy: 'escorpiones', memory: 'ninez',
+    edges: OPEN_EDGES, gapsX: [], gapsY: [],
+    // (versión aprobada antes de la regla de aterrizaje: [8,7] [9,7] [8,8] [30,6] [31,6] [31,22] [32,22] [32,21])
+    rocks: [[12, 12], [13, 12], [12, 13], [26, 11], [27, 11], [27, 18], [28, 18], [28, 17]],
   },
   {
     id: 'nieve', name: 'Nieve', scenario: 2,
     materials: [M('Hielo de glaciar', 'crystal', 0x9fd8f0), M('Flor de chuquiragua', 'flower', 0xe8762d), M('Lana de vicuña', 'wool', 0xd9b98a)],
-    friend: 'escarcha', enemy: 'hielo', memory: 'hermana_enferma'
+    friend: 'escarcha', enemy: 'hielo', memory: 'hermana_enferma',
+    edges: { T: 'gap', B: 'gap', L: 'open', R: 'open' }, gapsX: [[8, 11], [28, 31]], gapsY: [],
+    // (barras aprobadas antes de la regla de aterrizaje: fila 15 columnas 5-8 y fila 14 columnas 31-34)
+    rocks: [].concat(hbar(9, 14, 15), hbar(10, 14, 15), hbar(19, 25, 26), hbar(20, 25, 26), hbar(15, 10, 13), hbar(14, 26, 29)),
   },
   {
     id: 'volcan', name: 'Volcán', scenario: 3,
     materials: [M('Piedra pómez', 'rock', 0xb9b2a6), M('Azufre', 'shards', 0xf1d93a), M('Obsidiana', 'crystal', 0x3a3a4a)],
-    friend: 'brasa', enemy: 'lava', memory: 'leyenda'
+    friend: 'brasa', enemy: 'lava', memory: 'leyenda',
+    edges: GAP_EDGES, gapsX: [[10, 13]], gapsY: [[6, 9]],
+    rocks: [].concat(vbar(15, 17, 22), vbar(27, 7, 12), hbar(22, 24, 29), hbar(11, 8, 13)),
   },
   {
     id: 'noche', name: 'Noche', scenario: 4,
     materials: [M('Luz de luciérnaga', 'orb', 0xd4ff6b), M('Rocío lunar', 'drop', 0xbcd0ff), M('Flor nocturna', 'flower', 0xb48cff)],
-    friend: 'luna', enemy: 'murcielagos', memory: 'caminata'
+    friend: 'luna', enemy: 'murcielagos', memory: 'caminata',
+    edges: GAP_EDGES, gapsX: [[31, 33]], gapsY: [[4, 6]],
+    // 30 piedras; si se siente muy difícil, quitar el arco de abajo a la derecha (quedan 20)
+    rocks: [].concat(hbar(11, 6, 11), vbar(6, 12, 15), vbar(29, 17, 20), hbar(21, 24, 29), hbar(8, 24, 29), vbar(24, 9, 12)),
   }
 ];
 
