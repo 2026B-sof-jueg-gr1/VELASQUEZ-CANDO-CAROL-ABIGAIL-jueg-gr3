@@ -153,37 +153,70 @@ class Enemy {
   destroy() { this.g.destroy(); }
 }
 
-// Hormigas: una fila de 4 que cruza en horizontal. Si topa con piedra, borde cerrado o el cuerpo, la fila se da la vuelta.
+// Hormigas: una fila de 4 que ENTRA caminando desde fuera de un borde abierto (o hueco) y cruza en horizontal.
+// Si topa con piedra, borde cerrado o el cuerpo, la fila se da la vuelta. Si topa mientras entra, sale por donde vino.
+const inBoard = (c) => c.x >= 0 && c.x < COLS && c.y >= 0 && c.y < ROWS;
+
 class AntFile extends Enemy {
   constructor(dir, cells, d) {
     super(dir, DEPTH.items + 0.5);
-    this.body = cells;           // [cabeza, ..., cola]
+    this.body = cells;           // [cabeza, ..., cola]; al entrar, las celdas de fuera tienen x < 0 o x >= COLS
     this.d = d;
+    this.entering = true;
+    this.leaving = false;
+    this.done = false;
     this.draw();
   }
   static create(dir) {
-    const len = ENEMIES.hormigas.len;
-    for (const c of Phaser.Utils.Array.Shuffle(dir.world.spawnable.slice())) {
-      const d = { x: Math.random() < 0.5 ? 1 : -1, y: 0 };
-      const cells = [];
-      for (let k = 0; k < len; k++) cells.push({ x: c.x - d.x * k, y: c.y });
-      if (cells.every((q) => dir.okSpawn(q.x, q.y))) return new AntFile(dir, cells, d);
+    const len = ENEMIES.hormigas.len, w = dir.world, h = dir.scene.snake[0];
+    const lanes = [];
+    for (const side of ['L', 'R']) {
+      for (let y = 0; y < ROWS; y++) {
+        if (!w.crossable(side, y)) continue;
+        if (Math.abs(y - h.y) < ENEMY_ENTRY_ROW_DIST) continue;   // fila a 6 o más celdas de la cabeza
+        if (dir.rowInFront(y)) continue;                           // y fuera de las celdas que la cabeza tiene al frente
+        if (w.isRock(side === 'L' ? 0 : COLS - 1, y)) continue;
+        lanes.push({ side, y });
+      }
     }
-    return null;
+    if (!lanes.length) return null;
+    const lane = Phaser.Utils.Array.Shuffle(lanes)[0];
+    const d = { x: lane.side === 'L' ? 1 : -1, y: 0 };
+    const startX = lane.side === 'L' ? -1 : COLS;               // la cabeza empieza justo fuera del tablero
+    const cells = [];
+    for (let k = 0; k < len; k++) cells.push({ x: startX - d.x * k, y: lane.y });
+    return new AntFile(dir, cells, d);
   }
-  cells() { return this.body; }
+  cells() { return this.body.filter(inBoard); }   // lo que está fuera del tablero no toca a nadie
   update(delta) {
     this.acc += delta;
     if (this.acc < ENEMIES.hormigas.step) return;
     this.acc -= ENEMIES.hormigas.step;
     const h = this.body[0];
-    const next = this.dir.groundStep(h, this.d);
-    if (!next) {
-      this.body.reverse();                 // se da la vuelta: la cola pasa a ser la cabeza
-      this.d = { x: -this.d.x, y: -this.d.y };
+    if (this.entering || this.leaving) {
+      const next = { x: h.x + this.d.x, y: h.y + this.d.y };
+      const blocked = inBoard(next) && (this.world.isRock(next.x, next.y) || this.dir.snakeBody(next.x, next.y));
+      if (blocked && !this.leaving) {
+        // topó al entrar: da media vuelta y sale por donde vino
+        this.body.reverse();
+        this.d = { x: -this.d.x, y: -this.d.y };
+        this.entering = false;
+        this.leaving = true;
+      } else {
+        this.body.unshift(next);
+        this.body.pop();
+      }
+      if (this.entering && this.body.every(inBoard)) this.entering = false;
+      if (this.leaving && this.body.every((c) => !inBoard(c))) this.done = true;
     } else {
-      this.body.unshift(next);
-      this.body.pop();
+      const next = this.dir.groundStep(h, this.d);
+      if (!next) {
+        this.body.reverse();                 // se da la vuelta: la cola pasa a ser la cabeza
+        this.d = { x: -this.d.x, y: -this.d.y };
+      } else {
+        this.body.unshift(next);
+        this.body.pop();
+      }
     }
     this.draw();
   }
@@ -385,6 +418,18 @@ class EnemyDirector {
     this.delay = ENEMY_START_DELAY;
   }
 
+  // Enemigos propios (Brasa, que es amiga, no cuenta para el máximo)
+  count() { return this.list.filter((e) => !e.isFriend).length; }
+
+  // ¿Esta fila cruza alguna de las celdas que la cabeza tiene al frente?
+  rowInFront(y) {
+    const sc = this.scene, h = sc.snake[0];
+    for (let k = 1; k <= ENEMY_MIN_DIST; k++) {
+      if ((h.y + sc.dir.y * k + ROWS * 2) % ROWS === y) return true;
+    }
+    return false;
+  }
+
   // Máximo a la vez: 1, luego 2 y luego 3 según las manzanas, sin pasar del tope de la tierra
   cap() {
     const a = this.scene.applesLevel;
@@ -396,10 +441,14 @@ class EnemyDirector {
     if (sc.dead || sc.busy) return;
     // Con la Fruta del Origen en el tablero no sale ninguno nuevo
     this.delay -= delta;
-    if (this.delay <= 0 && this.list.length < this.cap() && !sc.fruit) {
+    if (this.delay <= 0 && this.count() < this.cap() && !sc.fruit) {
       this.delay = this.spawn() ? 1500 : 500;
     }
     this.list.forEach((e) => e.update(delta));
+    if (this.list.some((e) => e.done)) {
+      this.list.filter((e) => e.done).forEach((e) => e.destroy());
+      this.list = this.list.filter((e) => !e.done);
+    }
     // Un enemigo que entra en la celda de la cabeza también cuenta
     const h = sc.snake[0];
     if (this.hitAt(h.x, h.y) && !sc.enemyHit()) sc.gameOver();
@@ -407,7 +456,7 @@ class EnemyDirector {
 
   // ignoreCap: para el atajo de debug
   spawn(ignoreCap = false) {
-    if (!ignoreCap && this.list.length >= this.cap()) return false;
+    if (!ignoreCap && this.count() >= this.cap()) return false;
     const e = ENEMY_CLASSES[this.type].create(this);
     if (!e) return false;
     this.list.push(e);
@@ -428,6 +477,7 @@ class EnemyDirector {
     const at = (c) => c && c.x === x && c.y === y;
     if (at(sc.food) || at(sc.material) || at(sc.fruit) || at(sc.power)) return false;
     if (this.hitAt(x, y)) return false;
+    if (sc.friends && sc.friends.occupies(x, y)) return false;
     return true;
   }
 

@@ -59,6 +59,62 @@ class World {
     return this.freeKeys().filter((c) => !traps.has(cellKey(c.x, c.y)) && !this.isLanding(c.x, c.y) && !this.inSpawnZone(c.x, c.y));
   }
 
+  // Distancia en pasos (con cruce de bordes) desde `from` hasta cada celda alcanzable
+  distFrom(from) {
+    const dist = new Map([[cellKey(from.x, from.y), 0]]);
+    const queue = [from];
+    while (queue.length) {
+      const c = queue.shift();
+      const d = dist.get(cellKey(c.x, c.y));
+      for (const n of this.neighbors(c.x, c.y)) {
+        const k = cellKey(n.x, n.y);
+        if (!dist.has(k)) { dist.set(k, d + 1); queue.push(n); }
+      }
+    }
+    return dist;
+  }
+
+  // Camino más corto de `from` a `to` (lista de celdas, con las dos puntas)
+  pathTo(from, to) {
+    const prev = new Map([[cellKey(from.x, from.y), null]]);
+    const queue = [from];
+    while (queue.length) {
+      const c = queue.shift();
+      if (c.x === to.x && c.y === to.y) break;
+      for (const n of this.neighbors(c.x, c.y)) {
+        const k = cellKey(n.x, n.y);
+        if (!prev.has(k)) { prev.set(k, c); queue.push(n); }
+      }
+    }
+    const out = [];
+    let c = prev.has(cellKey(to.x, to.y)) ? to : null;
+    while (c) { out.unshift(c); c = prev.get(cellKey(c.x, c.y)); }
+    return out;
+  }
+
+  // ¿Las 8 celdas de alrededor están libres y dentro del tablero?
+  openNeighborhood(x, y) {
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS || this.isRock(nx, ny)) return false;
+      }
+    }
+    return true;
+  }
+
+  // Casillas donde puede estar la amiga de esta tierra, vistas desde `from`
+  friendCandidates(id, from, traps) {
+    const rule = FRIEND_RULES[id];
+    const dist = this.distFrom(from);
+    const base = traps ? this.spawnableCells(traps) : this.spawnable;
+    return base.filter((c) => {
+      const d = dist.get(cellKey(c.x, c.y));
+      if (d === undefined || d < rule.minDist || d > rule.maxDist) return false;
+      return id === 'escarcha' || id === 'brasa' ? this.openNeighborhood(c.x, c.y) : true;
+    });
+  }
+
   // Celdas libres seguidas desde (x,y) en una dirección, con cruce de bordes (máximo `max`)
   freeRun(x, y, dx, dy, max = 40) {
     let n = 0;
@@ -203,7 +259,7 @@ class World {
     // Zona de salida: radio 3 libre y nada de piedras en las 5 celdas de adelante
     rep.spawnOk = true;
     for (let dx = -3; dx <= 3; dx++) for (let dy = -3; dy <= 3; dy++) if (this.isRock(SPAWN.x + dx, SPAWN.y + dy)) rep.spawnOk = false;
-    for (let dx = 1; dx <= 5; dx++) if (this.isRock(SPAWN.x + dx, SPAWN.y)) rep.spawnOk = false;
+    for (let dx = -8; dx <= 5; dx++) if (this.isRock(SPAWN.x + dx, SPAWN.y)) rep.spawnOk = false;   // cuerpo inicial con 5 amigas: hasta 8 celdas atrás
     if (!rep.spawnOk) rep.problems.push('la zona de salida tiene piedras');
 
     // Pista de aterrizaje: al cruzar un borde hay que tener LANDING_MIN celdas libres de frente
@@ -242,8 +298,13 @@ class World {
     let valid = 0, need = 10;
     const sset = new Set(spawnable.map((c) => cellKey(c.x, c.y)));
     if (enemy === 'hormigas') {
-      // una fila de 4 celdas de aparición seguidas
-      spawnable.forEach((c) => { if ([1, 2, 3].every((k) => sset.has(cellKey(c.x + k, c.y)))) valid++; });
+      // las hormigas entran por un borde abierto o hueco, en una fila a ENEMY_ENTRY_ROW_DIST o más de la cabeza
+      need = 4;
+      for (const side of ['L', 'R']) {
+        for (let y = 0; y < ROWS; y++) {
+          if (this.crossable(side, y) && Math.abs(y - SPAWN.y) >= ENEMY_ENTRY_ROW_DIST && !this.isRock(side === 'L' ? 0 : COLS - 1, y)) valid++;
+        }
+      }
     } else if (enemy === 'escorpiones') {
       spawnable.forEach((c) => { if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => this.freeRun(c.x, c.y, dx, dy, 8) >= 8)) valid++; });
     } else if (enemy === 'hielo') {
@@ -253,6 +314,12 @@ class World {
     } else {
       valid = spawnable.length;
     }
+    // Amiga de esta tierra: casillas válidas vistas desde la salida (misma regla que los enemigos)
+    const friend = LEVELS[this.levelIdx].friend;
+    const fValid = this.friendCandidates(friend, SPAWN, rep.traps).length;
+    const fNeed = friend === 'escarcha' || friend === 'brasa' ? 5 : 10;
+    rep.friend = { id: friend, valid: fValid, need: fNeed };
+    if (fValid < fNeed) rep.problems.push('amiga ' + friend + ': solo ' + fValid + ' casillas válidas (se necesitan ' + fNeed + ')');
     rep.enemy = { type: enemy, valid, need };
     if (valid < need) rep.problems.push('enemigo ' + enemy + ': solo ' + valid + ' casillas de aparición válidas (se necesitan ' + need + ')');
 
@@ -270,7 +337,8 @@ function validateAllWorlds() {
     rows.push({
       nivel: i + 1, tierra: r.name, piedras: r.rocks, libres: r.free, sinAlcanzar: r.unreachable.length,
       trampas: r.traps.size, salidaLibre: r.spawnOk, aterrizajeFallos: r.landing.length, pasillos1: r.narrow.length,
-      celdasAterrizaje: r.landingCells, enemigo: r.enemy.type, aparicionValida: r.enemy.valid + '/' + r.enemy.need
+      celdasAterrizaje: r.landingCells, enemigo: r.enemy.type, aparicionValida: r.enemy.valid + '/' + r.enemy.need,
+      amiga: r.friend.id, casillasAmiga: r.friend.valid + '/' + r.friend.need
     });
     if (r.problems.length) { ok = false; r.problems.forEach((p) => console.warn('[Nivel ' + (i + 1) + ' ' + r.name + '] ' + p)); }
   });

@@ -31,6 +31,10 @@ class SnakeScene extends Phaser.Scene {
     this.world = new World(GameState.level - 1);
     this.visuals = createWorldVisuals(this, this.world);
     this.enemies = new EnemyDirector(this);
+    this.friends = new FriendDirector(this);
+    // Al volver de la cámara del recuerdo de una amiga, el juego sigue donde estaba
+    this.events.off('resume');
+    this.events.on('resume', () => { this.busy = false; this.cameras.main.fadeIn(300, 11, 20, 16); });
     this.graceRing = this.add.graphics().setDepth(DEPTH.fx).setVisible(false);
     this.graceRing.fillStyle(PAL.gold, 0.16);
     this.graceRing.fillCircle(0, 0, 17);
@@ -101,8 +105,27 @@ class SnakeScene extends Phaser.Scene {
     this.draw();
   }
 
+  // 3 segmentos más uno por cada amiga que ya se unió (van al final de la cola)
   startSnake() {
-    return [{ x: 20, y: 15 }, { x: 19, y: 15 }, { x: 18, y: 15 }];
+    const n = 3 + GameState.friends.length;
+    return Array.from({ length: n }, (_, i) => ({ x: 20 - i, y: 15 }));
+  }
+
+  friendColors() {
+    return GameState.friends.map((id) => FRIENDS[id].color);
+  }
+
+  // Una amiga se une: un segmento nuevo de su color al final de la cola
+  addFriendSegment() {
+    this.snake.push({ ...this.snake[this.snake.length - 1] });
+    this.draw();
+  }
+
+  // Cámara del recuerdo de la amiga; esta escena queda en pausa y se retoma al terminar
+  openFriendMemory(id) {
+    this.busy = true;
+    this.scene.pause();
+    this.scene.launch('MemoryRingScene', { memory: FRIENDS[id].memory, rings: FRIENDS[id].rings, after: 'friend' });
   }
 
   handleKey(code) {
@@ -136,6 +159,7 @@ class SnakeScene extends Phaser.Scene {
     this.updateFruit(delta);
     this.updateInvuln(delta, time);
     this.enemies.update(delta);
+    this.friends.update(delta);
     this.acc += delta;
     // Con el poder Lento cada paso tarda más
     const delay = this.effects.slow > 0 ? this.stepDelay * SLOW_FACTOR : this.stepDelay;
@@ -363,6 +387,7 @@ class SnakeScene extends Phaser.Scene {
     this.removeMaterial();
     this.removePower();
     this.enemies.clear();
+    this.friends.clear();
     this.busy = true;
     this.shedSkin();
     this.time.delayedCall(700, () => this.playMirror(() => this.goToMemory()));
@@ -371,7 +396,7 @@ class SnakeScene extends Phaser.Scene {
   // La piel vieja se desprende y cae; la serpiente vuelve a empezar con 3 segmentos
   shedSkin() {
     const skin = this.add.graphics().setDepth(DEPTH.fx).setAlpha(0.75);
-    drawSnake(skin, this.snake, this.dir, false, GameState.level);
+    drawSnake(skin, this.snake, this.dir, false, GameState.level, this.friendColors());
     this.tweens.add({ targets: skin, y: 18, alpha: 0, duration: 1000, onComplete: () => skin.destroy() });
     this.snake.forEach((s) => this.shedBurst.explode(3, s.x * CELL + CELL / 2, s.y * CELL + CELL / 2));
     [660, 520, 400].forEach((f, i) => this.time.delayedCall(i * 120, () => beep(this, f, 0.2, 'triangle', f / 2)));
@@ -486,6 +511,17 @@ class SnakeScene extends Phaser.Scene {
     debugToast(this, 'L: azul aterrizaje · amarillo salida · rojo trampa · verde aparición');
   }
 
+  // Debug F: saca a la amiga de esta tierra ya; H: la une ya (abre su recuerdo)
+  debugFriend() {
+    if (this.busy || this.dead) return;
+    debugToast(this, this.friends.debugAppear() ? 'Debug: ' + this.friends.def.name : 'Debug: ya la tienes o no hay casilla');
+  }
+
+  debugFriendJoin() {
+    if (this.busy || this.dead) return;
+    if (!this.friends.debugJoin()) debugToast(this, 'Debug: la amiga aún no está en el tablero (F)');
+  }
+
   debugMaterials() {
     if (this.busy || this.dead) return;
     this.removeMaterial();
@@ -539,7 +575,7 @@ class SnakeScene extends Phaser.Scene {
   spawnPower() {
     this.powerCooldown = Phaser.Math.Between(6000, 10000);
     const types = Object.keys(POWERS).filter((t) =>
-      !(t === 'cut' && this.snake.length < 8) && !(t === 'shield' && this.effects.shield));
+      !(t === 'cut' && this.snake.length - GameState.friends.length < 8) && !(t === 'shield' && this.effects.shield));
     const free = this.freeCells();
     if (!free.length) return;
     const cell = Phaser.Utils.Array.GetRandom(free);
@@ -579,7 +615,9 @@ class SnakeScene extends Phaser.Scene {
     if (type === 'double') this.effects.double = def.time;
     if (type === 'shield') this.effects.shield = true;
     if (type === 'cut') {
-      const keep = Math.max(3, Math.ceil(this.snake.length * 0.6));
+      // Las amigas van al final de la cola y no se cortan: se corta solo la parte de la serpiente
+      const f = GameState.friends.length;
+      const keep = Math.max(3, Math.ceil((this.snake.length - f) * 0.6)) + f;
       this.snake.splice(keep).forEach((s) => this.cutBurst.explode(5, s.x * CELL + CELL / 2, s.y * CELL + CELL / 2));
     }
     this.floatText(px, py, def.label + '!', '#' + def.color.toString(16).padStart(6, '0'));
@@ -620,7 +658,7 @@ class SnakeScene extends Phaser.Scene {
     for (let x = 0; x < COLS; x++) {
       for (let y = 0; y < ROWS; y++) {
         if (this.world.isRock(x, y) || this.world.isTrap(x, y)) continue;
-        if (this.enemies.near(x, y, 0)) continue;
+        if (this.enemies.near(x, y, 0) || this.friends.occupies(x, y)) continue;
         if (this.snake.some((s) => s.x === x && s.y === y)) continue;
         if (at(this.food, x, y) || at(this.material, x, y) || at(this.fruit, x, y) || at(this.power, x, y)) continue;
         free.push({ x, y });
@@ -641,7 +679,7 @@ class SnakeScene extends Phaser.Scene {
 
   draw() {
     this.gfx.clear();
-    drawSnake(this.gfx, this.snake, this.dir, this.effects.shield, GameState.level);
+    drawSnake(this.gfx, this.snake, this.dir, this.effects.shield, GameState.level, this.friendColors());
   }
 
   gameOver(won = false, note = '') {

@@ -52,11 +52,21 @@ function drawSegment(g, cell, color, i, stage = 1) {
   }
 }
 
-function drawSnake(g, snake, dir, shield, stage = 1) {
+// `friendColors`: colores de las amigas que van al final de la cola (un segmento cada una)
+function drawSnake(g, snake, dir, shield, stage = 1, friendColors = []) {
   snake.forEach((s) => drawSegmentShadow(g, s));
+  const bodyLen = Math.max(1, snake.length - friendColors.length);
   for (let i = snake.length - 1; i >= 0; i--) {
+    const fi = i - bodyLen;
+    if (fi >= 0 && fi < friendColors.length) {
+      drawSegment(g, snake[i], friendColors[fi], 0, stage);   // segmento de amiga: sin rombos dorados
+      const fx = snake[i].x * CELL + CELL / 2, fy = snake[i].y * CELL + CELL / 2 - 2;
+      g.fillStyle(0xf2c14e);
+      g.fillCircle(fx, fy, 1.6);
+      continue;
+    }
     // Desde el nivel 4 la cabeza es de piel (una cara)
-    const color = i === 0 && stage >= 4 ? SKIN[0] : segmentColor(i, snake.length, stage);
+    const color = i === 0 && stage >= 4 ? SKIN[0] : segmentColor(i, bodyLen, stage);
     drawSegment(g, snake[i], color, i, stage);
   }
 

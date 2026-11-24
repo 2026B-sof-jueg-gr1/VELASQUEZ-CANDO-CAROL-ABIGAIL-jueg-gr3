@@ -189,6 +189,12 @@ class MemoryRingScene extends Phaser.Scene {
 
   // Qué viene después del recuerdo: la siguiente tierra, el final provisional o volver al juego
   afterMemory() {
+    if (this.cfg.after === 'friend') {
+      // El recuerdo de una amiga: se cierra esta escena y la partida sigue donde estaba
+      this.scene.resume('SnakeScene');
+      this.scene.stop();
+      return;
+    }
     if (this.cfg.after === 'fruit') {
       if (GameState.level >= LEVELS.length) {
         GameState.materials = 0;

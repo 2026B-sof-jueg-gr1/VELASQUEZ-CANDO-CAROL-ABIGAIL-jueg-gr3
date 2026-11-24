@@ -19,6 +19,7 @@ const GameState = {
   friends: [],       // ids de los amigos conseguidos (ver FRIENDS en data.js)
   memories: [],      // ids de los recuerdos conseguidos (ver MEMORIES en data.js)
   ending: null,      // 'casa' o 'guardian' cuando se elige el final
+  lost: [],          // amigas que se perdieron en esta partida (no se guarda)
 
   reset() {
     this.level = 1;
@@ -26,6 +27,7 @@ const GameState = {
     this.friends = [];
     this.memories = [];
     this.ending = null;
+    this.lost = [];
   },
 
   // Datos que se guardan en el navegador

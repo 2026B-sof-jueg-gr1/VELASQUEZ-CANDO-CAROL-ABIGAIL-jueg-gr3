@@ -44,4 +44,6 @@ const POWERS = {
 const GRACE_MS = 600;            // tras cruzar un borde, la cabeza ignora a los enemigos este tiempo
 const ENEMY_START_DELAY = 4000;  // ms desde que empieza el nivel hasta que sale el primer enemigo
 const ENEMY_AT = [5, 10];        // con cuántas manzanas sube el máximo de enemigos a 2 y a 3
-const ENEMY_MIN_DIST = 6;        // un enemigo nunca aparece a menos de tantas celdas de la cabeza ni de frente
+const ENEMY_MIN_DIST = 8;        // un enemigo nunca aparece a menos de tantas celdas de la cabeza ni de frente
+const ENEMY_ENTRY_ROW_DIST = 6; // las hormigas entran caminando por una fila al menos a tantas celdas de la cabeza
+const FRIEND_AFTER = 3;           // la amiga aparece tras esta manzana del nivel

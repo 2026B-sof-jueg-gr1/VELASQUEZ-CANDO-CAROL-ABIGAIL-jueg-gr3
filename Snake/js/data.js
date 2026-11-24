@@ -38,7 +38,8 @@ const LEVELS = [
     friend: 'escarcha', enemy: 'hielo', memory: 'hermana_enferma',
     edges: { T: 'gap', B: 'gap', L: 'open', R: 'open' }, gapsX: [[8, 11], [28, 31]], gapsY: [],
     // (barras aprobadas antes de la regla de aterrizaje: fila 15 columnas 5-8 y fila 14 columnas 31-34)
-    rocks: [].concat(hbar(9, 14, 15), hbar(10, 14, 15), hbar(19, 25, 26), hbar(20, 25, 26), hbar(15, 10, 13), hbar(14, 26, 29)),
+    // La barra de la izquierda está en la fila 16 (no 15) para no tocar el cuerpo inicial de 8 segmentos (3 + 5 amigas).
+    rocks: [].concat(hbar(9, 14, 15), hbar(10, 14, 15), hbar(19, 25, 26), hbar(20, 25, 26), hbar(16, 10, 13), hbar(14, 26, 29)),
   },
   {
     id: 'volcan', name: 'Volcán', scenario: 3,
@@ -57,6 +58,15 @@ const LEVELS = [
   }
 ];
 
+// Retos de las amigas
+const FRIEND_RULES = {
+  musgo: { time: 10000, minDist: 12, maxDist: 45 },
+  duna: { minDist: 10, maxDist: 60 },
+  escarcha: { passes: 3, minDist: 10, maxDist: 60 },
+  brasa: { dodges: 3, near: 2, minDist: 10, maxDist: 60 },
+  luna: { fireflies: 5, minDist: 10, maxDist: 45 }
+};
+
 // Enemigos de cada tierra (los ids son LEVELS[i].enemy). Tiempos en ms; cap = máximo a la vez.
 const ENEMIES = {
   hormigas: { name: 'Hormigas', step: 230, cap: 2, len: 4 },
@@ -66,13 +76,14 @@ const ENEMIES = {
   murcielagos: { name: 'Murciélagos', step: 130, zig: 3, cap: 3 }
 };
 
-// Miniserpientes amigas. `power` es lo que harán en la batalla final.
+// Miniserpientes amigas. `power` es lo que harán en la batalla final; `rings` son los anillos de su recuerdo;
+// `hint` es el aviso del reto ({n} = segundos o avance).
 const FRIENDS = {
-  musgo: { name: 'Musgo', color: 0x3fae6a, memory: 'trepar', power: 'Escudo: aguanta un golpe' },
-  duna: { name: 'Duna', color: 0xe0b469, memory: 'mochila', power: 'Golpe doble: el siguiente daño cuenta por dos' },
-  escarcha: { name: 'Escarcha', color: 0xcfe6f2, memory: 'curandero', power: 'Congela a la mega serpiente por 5 s' },
-  brasa: { name: 'Brasa', color: 0xe2512f, memory: 'arbol', power: 'Corte: le quita el 30 % de la cola' },
-  luna: { name: 'Luna', color: 0x3d5bd9, memory: 'entrada', power: 'Visión: marca hacia dónde se mueve' }
+  musgo: { name: 'Musgo', color: 0x3fae6a, memory: 'trepar', power: 'Escudo: aguanta un golpe', rings: 2, hint: 'Musgo está atrapada: llega a ella en {n} s' },
+  duna: { name: 'Duna', color: 0xe0b469, memory: 'mochila', power: 'Golpe doble: el siguiente daño cuenta por dos', rings: 2, hint: 'Duna tiene sed: llévale el agua de oasis' },
+  escarcha: { name: 'Escarcha', color: 0xcfe6f2, memory: 'curandero', power: 'Congela a la mega serpiente por 5 s', rings: 3, hint: 'Escarcha está congelada: pasa a su lado ({n}/3)' },
+  brasa: { name: 'Brasa', color: 0xe2512f, memory: 'arbol', power: 'Corte: le quita el 30 % de la cola', rings: 3, hint: 'Brasa es una culebra de lava: esquívala ({n}/3)' },
+  luna: { name: 'Luna', color: 0x3d5bd9, memory: 'entrada', power: 'Visión: marca hacia dónde se mueve', rings: 3, hint: 'Luna se perdió en la oscuridad: sigue las luciérnagas ({n}/5)' }
 };
 
 // Recuerdos. `orden` (1 a 10) es la posición correcta para el puzzle final.
