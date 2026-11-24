@@ -16,12 +16,61 @@ class World {
     this.gapsX = lv.gapsX || [];
     this.gapsY = lv.gapsY || [];
     this.rocks = new Set(lv.rocks.map(([x, y]) => cellKey(x, y)));
+    this.landing = this.computeLanding();
     // El informe se hace con el mapa tal como lo escribí a mano; después se tapan los huecos aislados
     this.report = this.validate();
     this.filled = this.sealUnreachable();
     this.traps = this.findTraps();
     this.fruitCells = this.findFruitCells();
+    this.spawnable = this.spawnableCells(this.traps);
+    this.spawnSet = new Set(this.spawnable.map((c) => cellKey(c.x, c.y)));
   }
+
+  // ---------- Pista de aterrizaje y casillas de aparición ----------
+
+  // Las primeras LANDING_MIN celdas hacia adentro de cada entrada que se puede cruzar
+  computeLanding() {
+    const set = new Set();
+    for (const side of ['T', 'B', 'L', 'R']) {
+      const count = side === 'T' || side === 'B' ? COLS : ROWS;
+      const dir = { T: [0, 1], B: [0, -1], L: [1, 0], R: [-1, 0] }[side];
+      for (let i = 0; i < count; i++) {
+        if (!this.crossable(side, i)) continue;
+        let x = side === 'L' ? 0 : side === 'R' ? COLS - 1 : i;
+        let y = side === 'T' ? 0 : side === 'B' ? ROWS - 1 : i;
+        for (let n = 0; n < LANDING_MIN && x >= 0 && x < COLS && y >= 0 && y < ROWS && !this.isRock(x, y); n++) {
+          set.add(cellKey(x, y)); x += dir[0]; y += dir[1];
+        }
+      }
+    }
+    return set;
+  }
+
+  isLanding(x, y) { return this.landing.has(cellKey(x, y)); }
+
+  // Zona de salida: radio 3 alrededor de la cabeza y el cuerpo inicial (hasta 8 celdas atrás, con las amigas) y 5 de frente
+  inSpawnZone(x, y) {
+    const dx = x - SPAWN.x, dy = y - SPAWN.y;
+    return (Math.abs(dx) <= 3 && Math.abs(dy) <= 3) || (dy === 0 && dx >= -8 && dx <= 5);
+  }
+
+  // Casillas donde pueden aparecer enemigos y amigas: libres, sin trampa, fuera de la zona de salida y de la pista de aterrizaje
+  spawnableCells(traps) {
+    return this.freeKeys().filter((c) => !traps.has(cellKey(c.x, c.y)) && !this.isLanding(c.x, c.y) && !this.inSpawnZone(c.x, c.y));
+  }
+
+  // Celdas libres seguidas desde (x,y) en una dirección, con cruce de bordes (máximo `max`)
+  freeRun(x, y, dx, dy, max = 40) {
+    let n = 0;
+    let c = { x, y };
+    while (n < max) {
+      const r = this.resolve(c.x + dx, c.y + dy);
+      if (r.hit || !r.cell) break;
+      c = r.cell; n++;
+    }
+    return n;
+  }
+
 
   // ---------- Consultas ----------
 
@@ -183,6 +232,30 @@ class World {
     });
     if (rep.narrow.length) rep.problems.push('pasillos de 1 celda: ' + rep.narrow.length + ' ' + JSON.stringify(rep.narrow.slice(0, 12)));
 
+    // Casillas de aparición del enemigo de esta tierra (no en pista de aterrizaje, zona de salida ni trampa)
+    rep.landingCells = this.landing.size;
+    // Peor caso: la cabeza recién salida. Cuenta solo lo que está a ENEMY_MIN_DIST o más y fuera de la línea de frente.
+    const farFromSpawn = (c) => Math.max(Math.abs(c.x - SPAWN.x), Math.abs(c.y - SPAWN.y)) >= ENEMY_MIN_DIST
+      && !(c.y === SPAWN.y && c.x > SPAWN.x && c.x <= SPAWN.x + ENEMY_MIN_DIST);
+    const spawnable = this.spawnableCells(rep.traps).filter(farFromSpawn);
+    const enemy = LEVELS[this.levelIdx].enemy;
+    let valid = 0, need = 10;
+    const sset = new Set(spawnable.map((c) => cellKey(c.x, c.y)));
+    if (enemy === 'hormigas') {
+      // una fila de 4 celdas de aparición seguidas
+      spawnable.forEach((c) => { if ([1, 2, 3].every((k) => sset.has(cellKey(c.x + k, c.y)))) valid++; });
+    } else if (enemy === 'escorpiones') {
+      spawnable.forEach((c) => { if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => this.freeRun(c.x, c.y, dx, dy, 8) >= 8)) valid++; });
+    } else if (enemy === 'hielo') {
+      spawnable.forEach((c) => { if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => this.freeRun(c.x, c.y, dx, dy, 6) >= 6)) valid++; });
+    } else if (enemy === 'lava') {
+      valid = spawnable.length; need = 20;
+    } else {
+      valid = spawnable.length;
+    }
+    rep.enemy = { type: enemy, valid, need };
+    if (valid < need) rep.problems.push('enemigo ' + enemy + ': solo ' + valid + ' casillas de aparición válidas (se necesitan ' + need + ')');
+
     rep.ok = rep.problems.length === 0;
     return rep;
   }
@@ -196,7 +269,8 @@ function validateAllWorlds() {
     const r = new World(i).report;
     rows.push({
       nivel: i + 1, tierra: r.name, piedras: r.rocks, libres: r.free, sinAlcanzar: r.unreachable.length,
-      trampas: r.traps.size, salidaLibre: r.spawnOk, aterrizajeFallos: r.landing.length, pasillos1: r.narrow.length
+      trampas: r.traps.size, salidaLibre: r.spawnOk, aterrizajeFallos: r.landing.length, pasillos1: r.narrow.length,
+      celdasAterrizaje: r.landingCells, enemigo: r.enemy.type, aparicionValida: r.enemy.valid + '/' + r.enemy.need
     });
     if (r.problems.length) { ok = false; r.problems.forEach((p) => console.warn('[Nivel ' + (i + 1) + ' ' + r.name + '] ' + p)); }
   });

@@ -57,6 +57,15 @@ const LEVELS = [
   }
 ];
 
+// Enemigos de cada tierra (los ids son LEVELS[i].enemy). Tiempos en ms; cap = máximo a la vez.
+const ENEMIES = {
+  hormigas: { name: 'Hormigas', step: 230, cap: 2, len: 4 },
+  escorpiones: { name: 'Escorpiones', step: 160, cap: 2 },
+  hielo: { name: 'Bloques de hielo', slide: 90, rest: 1000, maxSlide: 25, cap: 3 },
+  lava: { name: 'Culebras de lava', warn: 1000, up: 2000, restMin: 1500, restMax: 3000, cap: 3 },
+  murcielagos: { name: 'Murciélagos', step: 130, zig: 3, cap: 3 }
+};
+
 // Miniserpientes amigas. `power` es lo que harán en la batalla final.
 const FRIENDS = {
   musgo: { name: 'Musgo', color: 0x3fae6a, memory: 'trepar', power: 'Escudo: aguanta un golpe' },

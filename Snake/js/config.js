@@ -40,3 +40,8 @@ const POWERS = {
   shield: { label: 'Escudo', color: 0x3fae6a },
   cut: { label: 'Tijeras', color: 0xe2512f }
 };
+
+const GRACE_MS = 600;            // tras cruzar un borde, la cabeza ignora a los enemigos este tiempo
+const ENEMY_START_DELAY = 4000;  // ms desde que empieza el nivel hasta que sale el primer enemigo
+const ENEMY_AT = [5, 10];        // con cuántas manzanas sube el máximo de enemigos a 2 y a 3
+const ENEMY_MIN_DIST = 6;        // un enemigo nunca aparece a menos de tantas celdas de la cabeza ni de frente

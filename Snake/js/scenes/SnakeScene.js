@@ -22,12 +22,21 @@ class SnakeScene extends Phaser.Scene {
     this.powerCooldown = 5000;       // ms hasta intentar sacar otro poder
     this.effects = { slow: 0, double: 0, shield: false };
     this.invuln = 0;                 // ms de invulnerabilidad después de gastar el escudo
+    this.grace = 0;                  // ms de gracia después de cruzar un borde: la cabeza ignora a los enemigos
+    this.applesLevel = 0;            // manzanas comidas en este intento del nivel (suben el máximo de enemigos)
 
     makeTextures(this);
     this.scenario = createScenario(this, GameState.current().scenario);
     // Bordes, piedras y marco de esta tierra
     this.world = new World(GameState.level - 1);
     this.visuals = createWorldVisuals(this, this.world);
+    this.enemies = new EnemyDirector(this);
+    this.graceRing = this.add.graphics().setDepth(DEPTH.fx).setVisible(false);
+    this.graceRing.fillStyle(PAL.gold, 0.16);
+    this.graceRing.fillCircle(0, 0, 17);
+    this.graceRing.lineStyle(3, PAL.gold, 0.9);
+    this.graceRing.strokeCircle(0, 0, 17);
+    this.overlay = null;
     if (DEBUG && !this.world.report.ok) this.world.report.problems.forEach((t) => console.warn('[Mapa ' + this.world.name + '] ' + t));
 
     this.foodGfx = this.add.graphics().setDepth(DEPTH.items);
@@ -126,6 +135,7 @@ class SnakeScene extends Phaser.Scene {
     this.updatePowers(delta);
     this.updateFruit(delta);
     this.updateInvuln(delta, time);
+    this.enemies.update(delta);
     this.acc += delta;
     // Con el poder Lento cada paso tarda más
     const delay = this.effects.slow > 0 ? this.stepDelay * SLOW_FACTOR : this.stepDelay;
@@ -137,6 +147,14 @@ class SnakeScene extends Phaser.Scene {
 
   // Pulso suave (menos de 2 veces por segundo, sin destellos) mientras dura la invulnerabilidad
   updateInvuln(delta, time) {
+    // Gracia tras cruzar un borde: un aro dorado suave sigue a la cabeza mientras dura
+    if (this.grace > 0) {
+      this.grace = Math.max(0, this.grace - delta);
+      const h = this.snake[0];
+      this.graceRing.setPosition(h.x * CELL + CELL / 2, h.y * CELL + CELL / 2).setAlpha(0.25 + 0.75 * this.grace / GRACE_MS).setVisible(this.grace > 0);
+    } else if (this.graceRing.visible) {
+      this.graceRing.setVisible(false);
+    }
     if (this.invuln > 0) {
       this.invuln = Math.max(0, this.invuln - delta);
       this.gfx.setAlpha(this.invuln > 0 ? 0.7 + 0.3 * Math.sin(time * 0.012) : 1);
@@ -161,6 +179,7 @@ class SnakeScene extends Phaser.Scene {
       if (this.invuln <= 0 && !this.useShield('rock')) return this.gameOver();
     } else if (next.crossed) {
       this.crossGlow(entry);
+      this.grace = GRACE_MS;
     }
     head.x = entry.x;
     head.y = entry.y;
@@ -176,6 +195,8 @@ class SnakeScene extends Phaser.Scene {
     if (body.some((s) => s.x === head.x && s.y === head.y)) {
       if (this.invuln <= 0 && !this.useShield('body')) return this.gameOver();
     }
+    // Un enemigo en la celda de destino: solo cuenta la cabeza
+    if (this.enemies.hitAt(head.x, head.y) && !this.enemyHit()) return this.gameOver();
     // Mientras la cabeza está dentro de una piedra no se acaba la invulnerabilidad
     if (this.world.isRock(head.x, head.y)) this.invuln = Math.max(this.invuln, 300);
 
@@ -194,6 +215,7 @@ class SnakeScene extends Phaser.Scene {
       beep(this, 660, 0.08, 'square', 990);
       this.stepDelay = Math.max(60, this.stepDelay - 3);
       this.applesSinceMaterial++;
+      this.applesLevel++;
       this.food = this.spawnFood();
       if (!this.food) return this.gameOver(true);
       this.placeAt(this.foodGfx, this.food);
@@ -288,7 +310,7 @@ class SnakeScene extends Phaser.Scene {
     if (this.fruit) return;
     const free = this.freeCells();
     if (!free.length) return;
-    const near = free.filter((c) => this.world.fruitCells.some((f) => f.x === c.x && f.y === c.y));
+    const near = free.filter((c) => this.world.fruitCells.some((f) => f.x === c.x && f.y === c.y) && !this.enemies.near(c.x, c.y, 2));
     const cell = Phaser.Utils.Array.GetRandom(near.length ? near : free);
     this.fruit = { ...cell, life: FRUIT_TIME };
 
@@ -340,6 +362,7 @@ class SnakeScene extends Phaser.Scene {
     this.removeFruit();
     this.removeMaterial();
     this.removePower();
+    this.enemies.clear();
     this.busy = true;
     this.shedSkin();
     this.time.delayedCall(700, () => this.playMirror(() => this.goToMemory()));
@@ -429,6 +452,38 @@ class SnakeScene extends Phaser.Scene {
     GameState.materials = 0;
     GameState.save();
     this.scene.restart();
+  }
+
+  // Debug E: saca un enemigo ya, sin esperar ni respetar el máximo
+  debugEnemy() {
+    if (this.busy || this.dead) return;
+    const ok = this.enemies.spawn(true);
+    debugToast(this, ok ? 'Debug: ' + this.enemies.def.name : 'Debug: no hay casilla válida');
+  }
+
+  // Debug L: pinta aterrizaje (azul), trampas (rojo), zona de salida (amarillo) y casillas de aparición (verde)
+  debugOverlay() {
+    if (this.overlay) {
+      this.overlay.destroy();
+      this.overlay = null;
+      return debugToast(this, 'Debug: capas ocultas');
+    }
+    const g = this.add.graphics().setDepth(DEPTH.fx - 0.5);
+    const w = this.world;
+    for (let x = 0; x < COLS; x++) {
+      for (let y = 0; y < ROWS; y++) {
+        if (w.isRock(x, y)) continue;
+        const k = x + ',' + y;
+        let color = 0, a = 0;
+        if (w.traps.has(k)) { color = 0xff3030; a = 0.55; }
+        else if (w.inSpawnZone(x, y)) { color = 0xffe14a; a = 0.35; }
+        else if (w.landing.has(k)) { color = 0x3d8bff; a = 0.28; }
+        else if (w.spawnSet.has(k)) { color = 0x3ddc84; a = 0.2; }
+        if (a) { g.fillStyle(color, a); g.fillRect(x * CELL + 1, y * CELL + 1, CELL - 2, CELL - 2); }
+      }
+    }
+    this.overlay = g;
+    debugToast(this, 'L: azul aterrizaje · amarillo salida · rojo trampa · verde aparición');
   }
 
   debugMaterials() {
@@ -530,6 +585,12 @@ class SnakeScene extends Phaser.Scene {
     this.floatText(px, py, def.label + '!', '#' + def.color.toString(16).padStart(6, '0'));
   }
 
+  // Un enemigo toca la cabeza. Devuelve true si la serpiente sobrevive (gracia, invulnerabilidad o escudo).
+  enemyHit() {
+    if (this.invuln > 0 || this.grace > 0) return true;
+    return this.useShield('enemy');
+  }
+
   // El escudo absorbe cualquier golpe y se gasta. Al pasar una piedra o el cuerpo, la serpiente
   // queda invulnerable 1 segundo (con un pulso suave) para no morir en el paso siguiente.
   useShield() {
@@ -559,6 +620,7 @@ class SnakeScene extends Phaser.Scene {
     for (let x = 0; x < COLS; x++) {
       for (let y = 0; y < ROWS; y++) {
         if (this.world.isRock(x, y) || this.world.isTrap(x, y)) continue;
+        if (this.enemies.near(x, y, 0)) continue;
         if (this.snake.some((s) => s.x === x && s.y === y)) continue;
         if (at(this.food, x, y) || at(this.material, x, y) || at(this.fruit, x, y) || at(this.power, x, y)) continue;
         free.push({ x, y });
