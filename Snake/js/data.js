@@ -76,6 +76,19 @@ const ENEMIES = {
   murcielagos: { name: 'Murciélagos', step: 130, zig: 3, cap: 3 }
 };
 
+// Textos del puzzle de la puerta
+const PUZZLE = {
+  title: 'La puerta de regreso',
+  help: 'Arrastra o toca una tarjeta y luego su casilla  ·  Teclado: ←→ elegir, Espacio coger o soltar, ↑↓ cambiar de zona',
+  empty: 'Faltan recuerdos por colocar',
+  wrong: 'La puerta no se mueve… algo no encaja',
+  button: 'Abrir la puerta',
+  ready: '¡Ya están todos! Ábrela cuando creas que el orden es el correcto',
+  hintAfter: 3,           // intentos fallidos antes de que aparezca la ayuda
+  filmHold: 2000,         // ms que dura cada recuerdo de la película
+  crossing: 'Inti cruza la puerta y su forma humana queda fija.'
+};
+
 // Miniserpientes amigas. `power` es lo que harán en la batalla final; `rings` son los anillos de su recuerdo;
 // `hint` es el aviso del reto ({n} = segundos o avance).
 const FRIENDS = {
@@ -119,9 +132,9 @@ const STORY = {
     'El volcán quema lo que sobra y deja lo verdadero. Piedra pómez, azufre y obsidiana.',
     'La última tierra es la más oscura. Luz de luciérnaga, rocío lunar y flor nocturna.'
   ],
-  // Provisional: se reemplaza cuando exista el puzzle de la puerta
+  // Después del recuerdo del nivel 5 y antes del puzzle de la puerta
   finale: [
-    { art: 'fruta_origen', text: 'Recorriste las cinco tierras y recuperaste cinco recuerdos. Pero la puerta de regreso aún no se abre.' },
-    { speaker: 'La guardiana', text: '«Vuelve pronto, Inti. Todavía te falta ordenar tu memoria.»' }
+    { art: 'fruta_origen', text: 'Recorriste las cinco tierras y recuperaste cinco pedazos de ti. Ante ti apareció la puerta de regreso, cerrada, tallada con una historia.' },
+    { speaker: 'La guardiana', text: '«Tus recuerdos están revueltos, Inti. Solo quien los ordena puede cruzar.»' }
   ]
 };

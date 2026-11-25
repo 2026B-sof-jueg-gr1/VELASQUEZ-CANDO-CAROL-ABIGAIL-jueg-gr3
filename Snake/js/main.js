@@ -9,7 +9,7 @@ const config = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH
   },
-  scene: [MenuScene, StoryScene, SnakeScene, MemoryRingScene]
+  scene: [MenuScene, StoryScene, SnakeScene, MemoryRingScene, MemoryPuzzleScene]
 };
 
 // Espera a que carguen las tipografías de Amaru para que el canvas no dibuje con otra letra.

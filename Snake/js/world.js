@@ -342,7 +342,10 @@ function validateAllWorlds() {
     });
     if (r.problems.length) { ok = false; r.problems.forEach((p) => console.warn('[Nivel ' + (i + 1) + ' ' + r.name + '] ' + p)); }
   });
+  const pz = validatePuzzle();
+  if (!pz.ok) { ok = false; pz.problems.forEach((p) => console.warn('[Puzzle] ' + p)); }
   console.table(rows);
+  console.log(pz.ok ? 'Puzzle: orden de los 10 recuerdos, validación con 5 y con 10 y ayuda: bien.' : 'Puzzle: hay avisos (ver arriba).');
   console.log(ok ? 'Validador: los 5 niveles pasan.' : 'Validador: hay avisos (ver arriba).');
   return ok;
 }

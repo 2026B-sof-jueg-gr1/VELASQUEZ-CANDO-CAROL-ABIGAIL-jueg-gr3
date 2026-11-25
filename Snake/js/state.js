@@ -20,6 +20,7 @@ const GameState = {
   memories: [],      // ids de los recuerdos conseguidos (ver MEMORIES en data.js)
   ending: null,      // 'casa' o 'guardian' cuando se elige el final
   lost: [],          // amigas que se perdieron en esta partida (no se guarda)
+  stage: 'level',    // dónde va la partida: 'level' (tierras), 'puzzle' (puerta), 'boss' (batalla) o 'ending' (finales)
 
   reset() {
     this.level = 1;
@@ -28,13 +29,14 @@ const GameState = {
     this.memories = [];
     this.ending = null;
     this.lost = [];
+    this.stage = 'level';
   },
 
   // Datos que se guardan en el navegador
   toJSON() {
     return {
       v: SAVE_VERSION, level: this.level, materials: this.materials,
-      friends: this.friends, memories: this.memories, ending: this.ending
+      friends: this.friends, memories: this.memories, ending: this.ending, stage: this.stage
     };
   },
 
@@ -52,6 +54,7 @@ const GameState = {
       this.friends = Array.isArray(d.friends) ? d.friends.filter((f) => FRIENDS[f]) : [];
       this.memories = Array.isArray(d.memories) ? d.memories.filter((m) => MEMORIES[m]) : [];
       this.ending = d.ending === 'casa' || d.ending === 'guardian' ? d.ending : null;
+      this.stage = ['level', 'puzzle', 'boss', 'ending'].includes(d.stage) ? d.stage : 'level';
       return true;
     } catch (e) { return false; }
   },

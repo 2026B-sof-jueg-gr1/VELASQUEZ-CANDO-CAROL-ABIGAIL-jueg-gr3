@@ -58,7 +58,8 @@ class MenuScene extends Phaser.Scene {
 
     this.options = [];
     if (this.hasSave) {
-      this.options.push({ id: 'continue', label: 'Continuar · Nivel ' + GameState.level + ' · ' + GameState.current().name });
+      const where = GameState.stage === 'puzzle' ? 'La puerta' : GameState.stage === 'boss' ? 'Batalla final' : 'Nivel ' + GameState.level + ' · ' + GameState.current().name;
+      this.options.push({ id: 'continue', label: 'Continuar · ' + where });
     }
     this.options.push({ id: 'new', label: 'Nueva partida' });
     this.sel = 0;
@@ -115,7 +116,9 @@ class MenuScene extends Phaser.Scene {
     }
     this.started = true;
     beep(this, 440, 0.12, 'square', 880);
-    // Partida nueva: intro de la historia. Continuar: solo lo que dice la guardiana de esa tierra.
+    // Partida nueva: intro de la historia. Continuar: retoma donde iba (una tierra, la puerta o la batalla).
+    if (opt.id === 'continue' && GameState.stage === 'puzzle') return this.scene.start('MemoryPuzzleScene');
+    if (opt.id === 'continue' && GameState.stage === 'boss') return this.scene.start(this.scene.manager.keys.BossScene ? 'BossScene' : 'MemoryPuzzleScene');
     goToLevelStory(this, opt.id === 'new' ? STORY.intro : []);
   }
 }

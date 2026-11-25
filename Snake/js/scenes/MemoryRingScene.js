@@ -198,8 +198,9 @@ class MemoryRingScene extends Phaser.Scene {
     if (this.cfg.after === 'fruit') {
       if (GameState.level >= LEVELS.length) {
         GameState.materials = 0;
+        GameState.stage = 'puzzle';     // "Continuar" retoma en la puerta, no en el nivel 5
         GameState.save();
-        this.scene.start('StoryScene', { pages: STORY.finale, next: 'MenuScene' });
+        this.scene.start('StoryScene', { pages: STORY.finale, next: 'MemoryPuzzleScene' });
       } else {
         GameState.level++;
         GameState.materials = 0;
