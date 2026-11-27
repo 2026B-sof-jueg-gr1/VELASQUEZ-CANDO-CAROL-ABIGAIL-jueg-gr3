@@ -8,6 +8,7 @@ class StoryScene extends Phaser.Scene {
   init(data) {
     this.pages = (data && data.pages) || [];
     this.nextKey = (data && data.next) || 'SnakeScene';
+    this.nextData = data && data.nextData;
     this.index = 0;
     this.leaving = false;
   }
@@ -111,6 +112,6 @@ class StoryScene extends Phaser.Scene {
     if (this.leaving) return;
     this.leaving = true;
     this.cameras.main.fadeOut(400, 11, 20, 16);
-    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start(this.nextKey));
+    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start(this.nextKey, this.nextData));
   }
 }

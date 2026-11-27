@@ -44,6 +44,13 @@ class MenuScene extends Phaser.Scene {
     })));
 
     front(this.add.text(400, 436, 'Récord: ' + loadBest(), HUD_STYLE).setColor(CSS.gold));
+    // Los finales que ya se vieron (los que faltan salen como ???)
+    const seen = loadEndingsSeen();
+    if (seen.length) {
+      front(this.add.text(400, 462, 'Finales: ' + ['casa', 'guardian'].map((id) => (seen.includes(id) ? ENDING.options[id].label : '???')).join('  ·  '), {
+        ...TEXT, fontSize: '14px', color: CSS.goldLight, backgroundColor: 'rgba(11,20,16,0.85)', padding: { x: 8, y: 2 }
+      }));
+    }
     if (DEBUG) front(this.add.text(60, 585, 'MODO DEBUG', { ...TEXT, fontSize: '14px', color: '#1a1204', backgroundColor: '#f2b33d', padding: { x: 6, y: 2 } }));
 
     this.createButtons(front);
@@ -119,8 +126,7 @@ class MenuScene extends Phaser.Scene {
     // Partida nueva: intro de la historia. Continuar: retoma donde iba (una tierra, la puerta o la batalla).
     if (opt.id === 'continue' && GameState.stage === 'puzzle') return this.scene.start('MemoryPuzzleScene');
     if (opt.id === 'continue' && GameState.stage === 'boss') return this.scene.start('BossScene');
-    // "El final": la escena de los finales (E3); mientras no exista, se retoma la batalla
-    if (opt.id === 'continue' && GameState.stage === 'ending') return this.scene.start(this.scene.manager.keys.EndingScene ? 'EndingScene' : 'BossScene');
+    if (opt.id === 'continue' && GameState.stage === 'ending') return this.scene.start('EndingScene', { part: 'choose' });
     goToLevelStory(this, opt.id === 'new' ? STORY.intro : []);
   }
 }

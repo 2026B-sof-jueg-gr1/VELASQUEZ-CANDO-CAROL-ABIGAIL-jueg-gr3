@@ -29,9 +29,12 @@ class MemoryPuzzleScene extends Phaser.Scene {
     this.perRow = Math.ceil(this.n / this.rows);
     this.size = this.tall ? 104 : 96;
     this.gap = this.tall ? 6 : 8;
-    this.doorK = this.tall ? 0.62 : 1;                 // tamaño de la puerta
+    this.doorK = this.tall ? 0.62 : 0.8;               // tamaño de la puerta
     this.doorX = 400 - 100 * this.doorK;
-    this.doorY = this.tall ? 22 : 55;
+    this.doorY = this.tall ? 20 : 44;
+    // alturas de las casillas y de la bandeja (el botón mide 104 px de alto para llegar a 44 px reales en un celular de 360 px)
+    this.slotY = this.tall ? 140 + this.size / 2 : 232;
+    this.trayY = this.tall ? this.slotY + 2 * (this.size + this.gap) + 8 : 346;
     this.fails = 0;
     this.held = null;            // id de la tarjeta que se tiene en la mano
     this.drag = null;
@@ -40,7 +43,7 @@ class MemoryPuzzleScene extends Phaser.Scene {
     this.slots = Array(this.n).fill(null);
 
     this.titleText = this.tall
-      ? this.add.text(190, 34, PUZZLE.title, { ...TITLE, fontSize: '20px', fontStyle: '700' }).setOrigin(0.5)
+      ? this.add.text(175, 32, PUZZLE.title, { ...TITLE, fontSize: '20px', fontStyle: '700' }).setOrigin(0.5)
       : this.add.text(400, 24, PUZZLE.title, { ...TITLE, fontSize: '26px', fontStyle: '700' }).setOrigin(0.5);
     this.buildDoor();
     this.buildSlots();
@@ -112,12 +115,12 @@ class MemoryPuzzleScene extends Phaser.Scene {
   }
 
   slotPos(i) {
-    return this.gridPos(i, this.tall ? 140 + this.size / 2 : 296);
+    return this.gridPos(i, this.slotY);
   }
 
   trayPos(i) {
     // en dos filas, la bandeja va debajo de las casillas con un poco más de aire
-    return this.gridPos(i, this.tall ? 140 + this.size / 2 + 2 * (this.size + this.gap) + 8 : 410);
+    return this.gridPos(i, this.trayY);
   }
 
   buildSlots() {
@@ -164,18 +167,18 @@ class MemoryPuzzleScene extends Phaser.Scene {
   buildTexts() {
     if (this.tall) {
       // franja de arriba: a la izquierda el título y la frase del recuerdo; a la derecha el aviso y el botón
-      this.caption = this.add.text(190, 84, PUZZLE.help, { ...TEXT, fontSize: '14px', color: PAL.muted, align: 'center', wordWrap: { width: 320 } }).setOrigin(0.5).setDepth(6);
-      this.message = this.add.text(620, 28, '', { ...TEXT, fontSize: '16px', fontStyle: '700', color: CSS.goldLight, align: 'center', wordWrap: { width: 320 } }).setOrigin(0.5).setDepth(6);
+      this.caption = this.add.text(175, 76, PUZZLE.help, { ...TEXT, fontSize: '14px', color: PAL.muted, align: 'center', wordWrap: { width: 300 } }).setOrigin(0.5).setDepth(6);
+      this.message = this.add.text(175, 114, '', { ...TEXT, fontSize: '15px', fontStyle: '700', color: CSS.goldLight, align: 'center', wordWrap: { width: 300 } }).setOrigin(0.5).setDepth(6);
     } else {
-      this.caption = this.add.text(400, 480, PUZZLE.help, { ...TEXT, fontSize: '17px', color: PAL.muted, align: 'center', wordWrap: { width: 720 } }).setOrigin(0.5).setDepth(6);
-      this.message = this.add.text(400, 508, '', { ...TEXT, fontSize: '19px', fontStyle: '700', color: CSS.goldLight, align: 'center', wordWrap: { width: 720 } }).setOrigin(0.5).setDepth(6);
+      this.caption = this.add.text(400, 424, PUZZLE.help, { ...TEXT, fontSize: '17px', color: PAL.muted, align: 'center', wordWrap: { width: 720 } }).setOrigin(0.5).setDepth(6);
+      this.message = this.add.text(400, 452, '', { ...TEXT, fontSize: '19px', fontStyle: '700', color: CSS.goldLight, align: 'center', wordWrap: { width: 720 } }).setOrigin(0.5).setDepth(6);
     }
   }
 
   buildButton() {
     this.btnBox = this.add.graphics().setDepth(6);
     // el botón es grande para poder tocarlo bien en celular
-    this.btnRect = this.tall ? { x: 520, y: 58, w: 260, h: 78 } : { x: 260, y: 528, w: 280, h: 64 };
+    this.btnRect = this.tall ? { x: 510, y: 18, w: 270, h: 106 } : { x: 250, y: 478, w: 300, h: 104 };
     const b = this.btnRect;
     this.btnLabel = this.add.text(b.x + b.w / 2, b.y + b.h / 2, PUZZLE.button, { ...TEXT, fontSize: '22px', fontStyle: '800', color: CSS.gold }).setOrigin(0.5).setDepth(7);
     this.drawButton(false);

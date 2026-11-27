@@ -355,10 +355,13 @@ function validateAllWorlds() {
   if (!arena.ok) { ok = false; arena.problems.forEach((p) => console.warn('[Arena] ' + p)); }
   const bs = validateBoss();
   if (!bs.ok) { ok = false; bs.problems.forEach((p) => console.warn('[Batalla] ' + p)); }
+  const en = validateEndings();
+  if (!en.ok) { ok = false; en.problems.forEach((p) => console.warn('[Finales] ' + p)); }
   const pz = validatePuzzle();
   if (!pz.ok) { ok = false; pz.problems.forEach((p) => console.warn('[Puzzle] ' + p)); }
   console.table(rows);
   console.log(bs.ok ? 'Batalla: arena abierta sin piedras, salidas separadas, poderes de las 5 amigas y reglas de la mega serpiente: bien.' : 'Batalla: hay avisos (ver arriba).');
+  console.log(en.ok ? 'Finales: las dos opciones, quién lleva la fruta, los textos, las ilustraciones y los créditos: bien.' : 'Finales: hay avisos (ver arriba).');
   console.log(pz.ok ? 'Puzzle: orden de los 10 recuerdos, validación con 5 y con 10 y ayuda: bien.' : 'Puzzle: hay avisos (ver arriba).');
   console.log(ok ? 'Validador: los 5 niveles pasan.' : 'Validador: hay avisos (ver arriba).');
   return ok;

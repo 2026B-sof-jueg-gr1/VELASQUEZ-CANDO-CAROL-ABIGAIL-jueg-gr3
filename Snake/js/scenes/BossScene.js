@@ -123,7 +123,7 @@ class BossScene extends Phaser.Scene {
     this.playerG.setAlpha(1);
     this.introPlayer = null;
     this.hudLabel.setVisible(true);
-    this.powerIcons.forEach((i) => i.setVisible(true));
+    this.powerIcons.forEach((i) => i.setVisible(!this.iconBig));
     this.startBattle();
   }
 
@@ -257,15 +257,34 @@ class BossScene extends Phaser.Scene {
 
   // ---------- Poderes de las amigas ----------
 
+  // Los íconos miden al menos 44 px reales: el radio de diseño se calcula con la escala actual de la pantalla
+  // (en un celular vertical de 360 px el lienzo se escala ~0,43, así que salen de ~104 px de diseño).
+  iconRadius() {
+    const ds = this.scale.displaySize.width / this.scale.gameSize.width || 1;
+    return Phaser.Math.Clamp(Math.ceil(46 / ds / 2), 28, 52);
+  }
+
   buildPowerIcons() {
     this.powerIcons = [];
     this.iconRects = [];
+    this.layoutIcons();
+    this.scale.on('resize', this.layoutIcons, this);
+    this.events.once('shutdown', () => this.scale.off('resize', this.layoutIcons, this));
+  }
+
+  layoutIcons() {
+    (this.powerIcons || []).forEach((t) => t.destroy());
+    this.powerIcons = [];
+    this.iconRects = [];
     const ids = this.friendIds.slice().sort((a, b) => BOSS_POWERS[a].key - BOSS_POWERS[b].key);
-    const r = 28, gap = 16;
+    const r = this.iconRadius(), big = r > 40, gap = big ? 10 : 16;
+    this.iconBig = big;
     const total = ids.length * (2 * r) + (ids.length - 1) * gap;
+    const y = big ? 600 - r - 4 : 546;
     ids.forEach((id, i) => {
-      const x = 400 - total / 2 + r + i * (2 * r + gap), y = 546;
-      const label = this.add.text(x, y + r + 12, String(BOSS_POWERS[id].key), { ...TEXT, fontSize: '16px', fontStyle: '800', color: CSS.goldLight, stroke: '#0b1410', strokeThickness: 4 }).setOrigin(0.5).setDepth(DEPTH.hud + 1);
+      const x = 400 - total / 2 + r + i * (2 * r + gap);
+      // el número de la tecla solo se muestra con íconos chicos (en celular no hay teclado)
+      const label = this.add.text(x, y + r + 12, String(BOSS_POWERS[id].key), { ...TEXT, fontSize: '16px', fontStyle: '800', color: CSS.goldLight, stroke: '#0b1410', strokeThickness: 4 }).setOrigin(0.5).setDepth(DEPTH.hud + 1).setVisible(!big && this.phase === 'battle');
       this.powerIcons.push(label);
       this.iconRects.push({ id, x, y, r });
     });
@@ -361,13 +380,16 @@ class BossScene extends Phaser.Scene {
       const cd = this.cooldown ? (this.cooldown[id] || 0) : 0;
       const ready = cd <= 0;
       const color = FRIENDS[id].color;
-      g.fillStyle(PAL.bg, 0.88);
+      const k = r / 28, soft = this.iconBig ? 0.7 : 1;      // íconos grandes: algo transparentes para ver el tablero
+      g.fillStyle(PAL.bg, 0.88 * soft);
       g.fillCircle(x, y, r + 3);
-      g.fillStyle(color, ready ? 1 : 0.5);
+      g.fillStyle(color, (ready ? 1 : 0.5) * soft);
       g.fillCircle(x, y, r);
       g.lineStyle(3, ready ? PAL.goldLight : PAL.line);
       g.strokeCircle(x, y, r);
-      this.drawGlyph(g, id, x, y);
+      g.save(); g.translateCanvas(x, y); g.scaleCanvas(k, k);
+      this.drawGlyph(g, id, 0, 0);
+      g.restore();
       if (!ready) {
         const frac = cd / BOSS_POWERS[id].cd;
         g.fillStyle(0x000000, 0.55);
@@ -415,6 +437,7 @@ class BossScene extends Phaser.Scene {
 
   handleKey(code) {
     if (this.phase === 'lose') {
+      if (!this.loseReady) return;
       if (code === 'Space' || code === 'Enter') this.scene.restart({ skipIntro: true });
       else if (code === 'KeyM') this.scene.start('MenuScene');
       return;
@@ -445,9 +468,9 @@ class BossScene extends Phaser.Scene {
   onDown(x, y) {
     this.tapped = false;
     if (this.phase === 'intro') { this.endIntro(); this.tapped = true; return; }
-    if (this.phase === 'lose') { this.scene.restart({ skipIntro: true }); return; }
+    if (this.phase === 'lose') { if (this.loseReady) this.scene.restart({ skipIntro: true }); return; }
     if (this.phase !== 'battle') return;
-    const hit = this.iconRects.find((i) => Math.hypot(x - i.x, y - i.y) <= i.r + 8);
+    const hit = this.iconRects.find((i) => Math.hypot(x - i.x, y - i.y) <= i.r + (this.iconBig ? 4 : 8));
     if (hit) { this.tapped = true; this.activatePower(hit.id); }
   }
 
@@ -475,21 +498,72 @@ class BossScene extends Phaser.Scene {
 
   // ---------- Final de la batalla ----------
 
-  // Derrota: la serpiente envuelve a Inti. Se puede reintentar sin repetir el puzzle.
+  // Derrota: la mega serpiente se enrosca alrededor de Inti y él pasa de piel a verde escama (sin destellos).
+  // Cuando termina la animación sale el texto y se puede reintentar sin repetir el puzzle.
   lose() {
     if (this.phase !== 'battle') return;
     this.phase = 'lose';
-    this.cameras.main.shake(250, 0.01);
-    beep(this, 300, 0.5, 'sawtooth', 60);
+    this.loseReady = false;
+    this.cameras.main.shake(200, 0.005);
+    beep(this, 300, 0.7, 'sawtooth', 60);
     this.playerG.setAlpha(1);
-    const h = this.player[0];
-    const over = (o) => o.setDepth(DEPTH.overlay);
-    over(this.add.rectangle(400, 300, GAME_W, GAME_H, PAL.bg, 0.78));
-    over(this.add.text(400, 215, BOSS_TEXT.defeat, { ...TITLE, fontSize: '36px', align: 'center', wordWrap: { width: 720 } }).setOrigin(0.5));
-    over(this.add.text(400, 285, BOSS_TEXT.defeatSub, { ...TEXT, fontSize: '22px', color: CSS.scale }).setOrigin(0.5));
-    over(this.add.text(400, 370, BOSS_TEXT.retry, { ...TEXT, fontSize: '18px', color: PAL.muted }).setOrigin(0.5));
-    this.burst.setParticleTint(PAL.red);
-    this.burst.explode(20, h.x * CELL + CELL / 2, h.y * CELL + CELL / 2);
+    this.rider.setVisible(false);
+    // se apaga la interfaz de la batalla para que solo se vea la animación
+    this.hudG.clear(); this.visionG.clear(); this.hudLabel.setVisible(false);
+    this.powerIcons.forEach((t) => t.setVisible(false));
+    this.iconRects = [];
+    if (this.toast) { this.toast.destroy(); this.toast = null; }
+    const cx = 400, feet = 450, H = 200;
+    this.loseShade = this.add.rectangle(400, 300, GAME_W, GAME_H, PAL.bg, 1).setDepth(DEPTH.overlay).setAlpha(0);
+    this.coilBack = this.add.graphics().setDepth(DEPTH.overlay + 1);
+    this.loseSkin = this.add.graphics().setDepth(DEPTH.overlay + 2).setAlpha(0);
+    this.loseGreen = this.add.graphics().setDepth(DEPTH.overlay + 2).setAlpha(0);
+    this.coilFront = this.add.graphics().setDepth(DEPTH.overlay + 3);
+    artPerson(this.loseSkin, cx, feet, H, 0x3d5bd9, true);
+    artPerson(this.loseGreen, cx, feet, H, PAL.scaleDark || 0x1f5a35, true, PAL.scale);
+    this.tweens.add({ targets: this.loseShade, alpha: 0.92, duration: 500 });
+    this.tweens.add({ targets: this.loseSkin, alpha: 1, duration: 600, delay: 200 });
+    const prog = { v: 0 };
+    this.tweens.add({
+      targets: prog, v: 1, duration: 2800, delay: 600, ease: 'Sine.InOut',
+      onUpdate: () => this.drawCoil(prog.v, cx, feet, H),
+      onComplete: () => this.showDefeatText()
+    });
+  }
+
+  // La serpiente sube en espiral alrededor de Inti. Los tramos de atrás van detrás de la figura y los de adelante, delante.
+  drawCoil(p, cx, feet, H) {
+    const N = 34, R = 58, turns = 3.4;
+    const shown = Math.max(1, Math.floor(p * N));
+    this.coilBack.clear(); this.coilFront.clear();
+    const green = Phaser.Math.Clamp((p - 0.3) / 0.6, 0, 1);       // la piel se vuelve escama mientras la serpiente sube
+    this.loseGreen.setAlpha(green);
+    for (let i = 0; i < shown; i++) {
+      const u = i / (N - 1);
+      const a = u * turns * Math.PI * 2;
+      const x = cx + Math.cos(a) * R * (1 - u * 0.25), y = feet + 4 - u * (H * 0.95) + Math.sin(a) * 14;
+      const front = Math.sin(a) > 0;
+      const g = front ? this.coilFront : this.coilBack;
+      const t = u;
+      const color = Phaser.Display.Color.GetColor(Math.round(Phaser.Math.Linear(0x2d, 0x8a, t)), Math.round(Phaser.Math.Linear(0x0f, 0x25, t)), Math.round(Phaser.Math.Linear(0x23, 0x45, t)));
+      const r = 12 - u * 3;
+      g.fillStyle(0x000000, 0.3); g.fillCircle(x + 2, y + 4, r);
+      g.fillStyle(color); g.fillCircle(x, y, r);
+      g.fillStyle(shade(color, 0.2), 0.8); g.fillCircle(x - r * 0.25, y - r * 0.3, r * 0.45);
+      if (i === shown - 1) {            // la cabeza, con ojos rojos
+        g.fillStyle(0xff4040); g.fillCircle(x - 4, y - 3, 2.6); g.fillCircle(x + 4, y - 3, 2.6);
+      }
+    }
+  }
+
+  showDefeatText() {
+    const over = (o) => o.setDepth(DEPTH.overlay + 5).setAlpha(0);
+    const items = [
+      over(this.add.text(400, 92, BOSS_TEXT.defeat, { ...TITLE, fontSize: '34px', align: 'center', wordWrap: { width: 720 } }).setOrigin(0.5)),
+      over(this.add.text(400, 150, BOSS_TEXT.defeatSub, { ...TEXT, fontSize: '22px', color: CSS.scale, align: 'center', wordWrap: { width: 700 } }).setOrigin(0.5)),
+      over(this.add.text(400, 530, BOSS_TEXT.retry, { ...TEXT, fontSize: '18px', color: PAL.muted, align: 'center', wordWrap: { width: 700 } }).setOrigin(0.5))
+    ];
+    this.tweens.add({ targets: items, alpha: 1, duration: 600, onComplete: () => { this.loseReady = true; } });
   }
 
   // Victoria: la mega serpiente se deshace y la forma humana de Inti queda fija
@@ -511,19 +585,9 @@ class BossScene extends Phaser.Scene {
     this.time.delayedCall(4200, () => this.leave());
   }
 
-  // Lo que sigue son los finales (E3). Mientras no existan: un texto y el menú.
+  // Después de la victoria: la guardiana pregunta y vienen los finales (en prueba de debug no se guarda nada)
   leave() {
     this.cameras.main.fadeOut(600, 11, 20, 16);
-    this.cameras.main.once('camerafadeoutcomplete', () => {
-      if (this.testRun) return this.scene.start('MenuScene');
-      if (this.scene.manager.keys.EndingScene) return this.scene.start('EndingScene');
-      this.scene.start('StoryScene', {
-        pages: [
-          { art: 'fruta_origen', text: 'Inti venció a la mega serpiente y su forma humana quedó fija.' },
-          { speaker: 'La guardiana', text: '«¿Vuelves a casa o te quedas a cuidar de ellos?» (los finales llegarán pronto)' }
-        ],
-        next: 'MenuScene'
-      });
-    });
+    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('EndingScene', { part: 'choose', test: this.testRun }));
   }
 }

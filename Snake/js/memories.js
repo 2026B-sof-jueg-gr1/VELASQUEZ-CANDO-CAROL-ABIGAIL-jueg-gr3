@@ -12,8 +12,7 @@ function artBg(g, top, bottom, horizon = 20) {
 }
 
 // Persona sencilla: los pies están en (x, y) y h es la altura
-function artPerson(g, x, y, h, color, pack = false) {
-  const skin = 0xe3b48c;
+function artPerson(g, x, y, h, color, pack = false, skin = 0xe3b48c) {
   if (pack) { g.fillStyle(0x6b4423); g.fillRoundedRect(x - h * 0.27, y - h * 0.6, h * 0.2, h * 0.34, 3); }
   g.fillStyle(color);
   g.fillRoundedRect(x - h * 0.13, y - h * 0.62, h * 0.26, h * 0.42, 3);
@@ -233,6 +232,71 @@ const STORY_ART = {
       g.fillStyle(0xffffff, 0.16); g.fillCircle(x, y, 18); g.fillStyle(c); g.fillCircle(x, y, 11);
     });
   },
+  // Final "casa": Inti llega al amanecer con la fruta
+  casa_llegada(g) {
+    artBg(g, 0x3a4a78, 0x4a7a3c, 50);
+    g.fillStyle(0xf2b33d, 0.45); g.fillCircle(70, 40, 40);
+    g.fillStyle(0xd9c7a0); g.fillTriangle(8, 120, 70, 120, 36, 56);
+    g.fillStyle(0xc9a27a); g.fillRect(-10, -10, 120, 70);
+    g.fillStyle(0x8a3b2a); g.fillTriangle(-24, -10, 124, -10, 50, -64);
+    g.fillStyle(0x5a3a22); g.fillRect(36, 20, 24, 40);
+    g.fillStyle(0xffd98a); g.fillRect(2, 8, 20, 20); g.fillRect(74, 8, 20, 20);
+    g.lineStyle(2, 0x5a3a22); g.strokeRect(2, 8, 20, 20); g.strokeRect(74, 8, 20, 20);
+    artPerson(g, -52, 100, 80, 0x3d5bd9, true);
+    artFruit(g, -44, 62, 8);
+  },
+  // Finales "casa" y "guardián": la hermana, sana
+  hermana_sana(g) {
+    artBg(g, 0x6b4a3a, 0x4a3224, 50);
+    g.fillStyle(PAL.gold, 0.16); g.fillCircle(-20, -20, 110);
+    g.fillStyle(0xffe9a8); g.fillRect(-98, -92, 56, 66);
+    g.lineStyle(3, 0x6b4423); g.strokeRect(-98, -92, 56, 66); g.lineBetween(-70, -92, -70, -26);
+    g.fillStyle(0x5a3a22); g.fillRect(-112, 46, 190, 38); g.fillRect(-112, 20, 10, 64);
+    g.fillStyle(0xdcd0b8); g.fillRoundedRect(-106, 30, 178, 24, 6);
+    g.fillStyle(0xffffff); g.fillRoundedRect(-104, 22, 44, 18, 8);
+    g.fillStyle(0xf2b33d); g.fillRoundedRect(-92, -8, 28, 36, 4);
+    g.fillStyle(0xe3b48c); g.fillCircle(-78, -18, 13);
+    g.fillStyle(0x2b1d14); g.fillEllipse(-78, -26, 28, 12);
+    g.lineStyle(2, 0x7a3b2a); g.beginPath(); g.arc(-78, -16, 6, 0.25, Math.PI - 0.25); g.strokePath();
+    g.fillStyle(0x6b4423); g.fillRect(62, 22, 44, 5); g.fillRect(68, 27, 5, 24); g.fillRect(96, 27, 5, 24);
+    artFruit(g, 84, 8, 9);
+    artPerson(g, 40, 100, 70, 0x3d5bd9);
+  },
+  // Final "casa": las amigas se despiden
+  despedida(g) {
+    artBg(g, 0x0e2418, 0x0a1a10, 60);
+    g.fillStyle(PAL.gold, 0.14); g.fillCircle(0, -50, 70);
+    [0x3fae6a, 0xe0b469, 0xcfe6f2, 0xe2512f, 0x3d5bd9].forEach((c, i) => {
+      const x = -80 + i * 40;
+      for (let k = 0; k < 4; k++) { g.fillStyle(shade(c, -0.25 + k * 0.08)); g.fillCircle(x + Math.sin(k * 1.4) * 6, 82 - k * 16, 9 - k * 0.6); }
+      g.fillStyle(c); g.fillEllipse(x + 3, 16, 22, 16);
+      g.fillStyle(0xfff3b0); g.fillCircle(x - 1, 14, 2.4); g.fillCircle(x + 7, 14, 2.4);
+      g.lineStyle(2, 0xefe6d2, 0.5); g.beginPath(); g.arc(x + 3, 2, 14, Math.PI * 1.15, Math.PI * 1.85); g.strokePath();
+    });
+  },
+  // Final "guardián": quien lleva la fruta a la casa de la hermana (una amiga o la guardiana)
+  portador(g, id) {
+    artBg(g, 0x0e2418, 0x0a1a10, 50);
+    g.fillStyle(0xefe6d2, 0.1); g.fillEllipse(0, 70, 240, 40);
+    g.fillStyle(0x2a1f2e); g.fillRect(60, -6, 60, 46); g.fillTriangle(52, -6, 128, -6, 90, -44);
+    g.fillStyle(0xffd98a); g.fillRect(74, 8, 14, 14);
+    if (id === 'guardiana') {
+      g.fillStyle(0x2f7d43); g.fillTriangle(-34, 104, 26, 104, -4, -14);
+      g.fillStyle(0x6fae7e); g.fillCircle(-4, -26, 15);
+      g.fillStyle(0x2f7d43); g.fillTriangle(-20, -34, -10, -54, -2, -34); g.fillTriangle(12, -34, 4, -54, -2, -34);
+      for (const s of [-1, 1]) { g.fillStyle(0xf2c14e); g.fillEllipse(-4 + s * 6, -26, 8, 5); }
+      artFruit(g, -4, 44, 13);
+    } else {
+      const c = FRIENDS[id].color;
+      for (let k = 0; k <= 14; k++) {
+        const t = k / 14;
+        g.fillStyle(shade(c, -0.3 + t * 0.3)); g.fillCircle(-100 + t * 92, 90 - t * 60 + Math.sin(t * 9) * 10, 10);
+      }
+      g.fillStyle(c); g.fillEllipse(-6, 26, 26, 18);
+      g.fillStyle(0xfff3b0); g.fillCircle(-12, 23, 2.6); g.fillCircle(0, 23, 2.6);
+      artFruit(g, -6, -4, 13);
+    }
+  },
   // Un ícono por tierra, con los mismos colores de la landing
   land(g, idx) {
     const cols = [0x3fae6a, 0xe0b469, 0xcfe6f2, 0xe2512f, 0x3d5bd9];
@@ -278,6 +342,7 @@ function makeArtTexture(scene, key, drawFn) {
 
 // Elige la textura de una ilustración por su nombre: un recuerdo, una de la historia o 'land:N'
 function artTexture(scene, name) {
+  if (name.startsWith('carry:')) { const id = name.slice(6); return makeArtTexture(scene, 'art-carry-' + id, (g) => STORY_ART.portador(g, id)); }
   if (name.startsWith('land:')) { const i = Number(name.slice(5)); return makeArtTexture(scene, 'art-land-' + i, (g) => STORY_ART.land(g, i)); }
   if (MEMORY_ART[name]) return makeArtTexture(scene, 'art-m-' + name, MEMORY_ART[name]);
   if (STORY_ART[name]) return makeArtTexture(scene, 'art-s-' + name, STORY_ART[name]);

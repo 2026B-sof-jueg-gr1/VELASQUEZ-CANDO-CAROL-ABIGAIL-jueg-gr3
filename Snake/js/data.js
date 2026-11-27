@@ -160,6 +160,29 @@ const MEMORIES = {
   guardiana: { orden: 10, titulo: 'El rostro de la guardiana al descubrirlo mordiendo la fruta' }
 };
 
+// Los finales (ver js/ending.js). `ask` es lo que pregunta la guardiana; `options` son los dos botones.
+// Las frases con nombres se arman con los ids de las amigas que se unieron.
+const ENDING = {
+  ask: '«¿Vuelves a casa o te quedas a cuidar de ellos?»',
+  options: {
+    casa: { label: 'Volver a casa', sub: 'Llevarle la fruta a tu hermana' },
+    guardian: { label: 'Quedarme a cuidar de ellos', sub: 'Ser el guardián del bosque' }
+  },
+  text: {
+    farewell: [' se despidió de Inti con un último roce de escamas.', ' se despidieron de Inti con un último roce de escamas.'],
+    farewellAlone: '«Ve en paz, Inti. Ya no eres el mismo que cruzó mi bosque.» La guardiana lo vio partir en silencio.',
+    arrive: 'Inti caminó hasta el amanecer. En la puerta de su casa apretaba contra el pecho la Fruta del Origen.',
+    healed: 'Su hermana comió un trozo y, poco a poco, el color volvió a sus mejillas. Inti, por fin, estaba en casa.',
+    stay: '«El bosque necesita a alguien que lo cuide, y tú lo conoces mejor que nadie. Quédate, y la fruta llegará a tu hermana.»',
+    carry: ' llevó la Fruta del Origen, de sombra en sombra, hasta la casa de la hermana de Inti.',
+    carryGuardian: 'La guardiana misma llevó la Fruta del Origen, de sombra en sombra, hasta la casa de la hermana de Inti.',
+    healedGuardian: 'Su hermana despertó con la fruta junto a su cama y, al probarla, sanó.',
+    guardianEnd: 'Y Inti se quedó como guardián de las cinco tierras, con sus amigas a su lado.',
+    guardianEndAlone: 'Y Inti se quedó como guardián de las cinco tierras. Ya nunca más estuvo solo, porque el bosque entero lo acompañaba.',
+    thanks: 'Gracias por jugar'
+  }
+};
+
 // Textos de la historia. Cada página puede llevar: text, art (ilustración), speaker (quién habla) y title.
 const STORY = {
   // Intro de una partida nueva. No revela por qué Inti entró al bosque.

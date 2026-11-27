@@ -2,6 +2,7 @@
 //   N = siguiente nivel   M = dar los 3 materiales   G = cámara del recuerdo   B = batalla final   R = puzzle de recuerdos
 //   E = sacar un enemigo ya   L = ver aterrizaje / trampas / casillas de aparición
 //   F = sacar a la amiga ya   H = unirla ya (abre su recuerdo)
+//   K = los finales (la guardiana pregunta; en la pregunta, C cambia quién lleva la fruta)
 //   V = validar los mapas de las 5 tierras (resultado en la consola)
 const DEBUG = new URLSearchParams(window.location.search).get('debug') === '1';
 
@@ -27,6 +28,8 @@ function debugKey(scene, code) {
     debugToast(scene, ok ? 'Validador: los 5 niveles pasan' : 'Validador: hay avisos (consola)');
   } else if (code === 'KeyB') {
     debugGo(scene, 'BossScene', 'la batalla final');
+  } else if (code === 'KeyK') {
+    if (scene.scene.manager.keys.EndingScene) scene.scene.start('EndingScene', { part: 'choose', test: true });
   } else if (code === 'KeyR') {
     debugGo(scene, 'MemoryPuzzleScene', 'el puzzle de recuerdos');
   } else {
