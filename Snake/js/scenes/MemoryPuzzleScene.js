@@ -22,8 +22,16 @@ class MemoryPuzzleScene extends Phaser.Scene {
     this.add.circle(400, 140, 190, PAL.gold, 0.05);
 
     this.n = this.ids.length;
-    this.size = this.n <= 5 ? 96 : this.n <= 8 ? 80 : 72;
-    this.gap = this.n <= 8 ? 8 : 6;
+    // Con 5 recuerdos o menos, una fila de casillas y una de bandeja. Con más, dos filas de cada una,
+    // para que cada tarjeta mida al menos 44 px reales en un celular vertical (el lienzo se escala ~0,46).
+    this.tall = this.n > 5;
+    this.rows = this.tall ? 2 : 1;
+    this.perRow = Math.ceil(this.n / this.rows);
+    this.size = this.tall ? 104 : 96;
+    this.gap = this.tall ? 6 : 8;
+    this.doorK = this.tall ? 0.62 : 1;                 // tamaño de la puerta
+    this.doorX = 400 - 100 * this.doorK;
+    this.doorY = this.tall ? 22 : 55;
     this.fails = 0;
     this.held = null;            // id de la tarjeta que se tiene en la mano
     this.drag = null;
@@ -31,7 +39,9 @@ class MemoryPuzzleScene extends Phaser.Scene {
     this.focus = { zone: 'tray', i: 0 };
     this.slots = Array(this.n).fill(null);
 
-    this.add.text(400, 24, PUZZLE.title, { ...TITLE, fontSize: '26px', fontStyle: '700' }).setOrigin(0.5);
+    this.titleText = this.tall
+      ? this.add.text(190, 34, PUZZLE.title, { ...TITLE, fontSize: '20px', fontStyle: '700' }).setOrigin(0.5)
+      : this.add.text(400, 24, PUZZLE.title, { ...TITLE, fontSize: '26px', fontStyle: '700' }).setOrigin(0.5);
     this.buildDoor();
     this.buildSlots();
     this.buildCards();
@@ -79,26 +89,35 @@ class MemoryPuzzleScene extends Phaser.Scene {
       g.destroy();
     }
     // el marco de piedra se queda quieto; la luz de detrás crece al abrirse
-    const frameG = this.add.graphics().setDepth(0.8);
+    const k = this.doorK, dx = this.doorX, dy = this.doorY;
+    const frameG = this.add.graphics({ x: dx, y: dy }).setDepth(0.8).setScale(k);
     frameG.fillStyle(0x2a251f);
-    frameG.fillRoundedRect(300, 55, 200, 170, { tl: 100, tr: 100, bl: 0, br: 0 });
-    this.doorLight = this.add.graphics().setDepth(1);
+    frameG.fillRoundedRect(0, 0, 200, 170, { tl: 100, tr: 100, bl: 0, br: 0 });
+    this.doorLight = this.add.graphics({ x: dx, y: dy }).setDepth(1).setScale(k);
     this.doorLight.fillStyle(PAL.goldLight, 1);
-    this.doorLight.fillRoundedRect(314, 66, 172, 160, { tl: 86, tr: 86, bl: 0, br: 0 });
+    this.doorLight.fillRoundedRect(14, 11, 172, 159, { tl: 86, tr: 86, bl: 0, br: 0 });
     this.doorLight.setAlpha(0);
-    this.leftLeaf = this.add.image(300, 55, key).setOrigin(0, 0).setCrop(0, 0, 100, 170).setDepth(2);
-    this.rightLeaf = this.add.image(300, 55, key).setOrigin(0, 0).setCrop(100, 0, 100, 170).setDepth(2);
-    this.add.graphics().setDepth(0).fillStyle(0x000000, 0.35).fillEllipse(400, 228, 230, 16);
+    this.leftLeaf = this.add.image(dx, dy, key).setOrigin(0, 0).setScale(k).setCrop(0, 0, 100, 170).setDepth(2);
+    this.rightLeaf = this.add.image(dx, dy, key).setOrigin(0, 0).setScale(k).setCrop(100, 0, 100, 170).setDepth(2);
+    this.doorBottom = dy + 170 * k;
+    this.add.graphics().setDepth(0).fillStyle(0x000000, 0.35).fillEllipse(400, this.doorBottom + 3, 230 * k, 16 * k);
+  }
+
+  // Posición de la casilla o del lugar de bandeja número i. Con dos filas, la primera lleva perRow y la segunda el resto.
+  gridPos(i, y0) {
+    const row = Math.floor(i / this.perRow), col = i % this.perRow;
+    const inRow = Math.min(this.perRow, this.n - row * this.perRow);
+    const w = inRow * this.size + (inRow - 1) * this.gap;
+    return { x: 400 - w / 2 + this.size / 2 + col * (this.size + this.gap), y: y0 + row * (this.size + this.gap) };
   }
 
   slotPos(i) {
-    const w = this.n * this.size + (this.n - 1) * this.gap;
-    return { x: 400 - w / 2 + this.size / 2 + i * (this.size + this.gap), y: 296 };
+    return this.gridPos(i, this.tall ? 140 + this.size / 2 : 296);
   }
 
   trayPos(i) {
-    const p = this.slotPos(i);
-    return { x: p.x, y: 410 };
+    // en dos filas, la bandeja va debajo de las casillas con un poco más de aire
+    return this.gridPos(i, this.tall ? 140 + this.size / 2 + 2 * (this.size + this.gap) + 8 : 410);
   }
 
   buildSlots() {
@@ -143,14 +162,22 @@ class MemoryPuzzleScene extends Phaser.Scene {
   }
 
   buildTexts() {
-    this.caption = this.add.text(400, 480, PUZZLE.help, { ...TEXT, fontSize: '17px', color: PAL.muted, align: 'center', wordWrap: { width: 720 } }).setOrigin(0.5).setDepth(6);
-    this.message = this.add.text(400, 512, '', { ...TEXT, fontSize: '19px', fontStyle: '700', color: CSS.goldLight, align: 'center', wordWrap: { width: 720 } }).setOrigin(0.5).setDepth(6);
+    if (this.tall) {
+      // franja de arriba: a la izquierda el título y la frase del recuerdo; a la derecha el aviso y el botón
+      this.caption = this.add.text(190, 84, PUZZLE.help, { ...TEXT, fontSize: '14px', color: PAL.muted, align: 'center', wordWrap: { width: 320 } }).setOrigin(0.5).setDepth(6);
+      this.message = this.add.text(620, 28, '', { ...TEXT, fontSize: '16px', fontStyle: '700', color: CSS.goldLight, align: 'center', wordWrap: { width: 320 } }).setOrigin(0.5).setDepth(6);
+    } else {
+      this.caption = this.add.text(400, 480, PUZZLE.help, { ...TEXT, fontSize: '17px', color: PAL.muted, align: 'center', wordWrap: { width: 720 } }).setOrigin(0.5).setDepth(6);
+      this.message = this.add.text(400, 508, '', { ...TEXT, fontSize: '19px', fontStyle: '700', color: CSS.goldLight, align: 'center', wordWrap: { width: 720 } }).setOrigin(0.5).setDepth(6);
+    }
   }
 
   buildButton() {
     this.btnBox = this.add.graphics().setDepth(6);
-    this.btnLabel = this.add.text(400, 556, PUZZLE.button, { ...TEXT, fontSize: '20px', fontStyle: '800', color: CSS.gold }).setOrigin(0.5).setDepth(7);
-    this.btnRect = { x: 280, y: 530, w: 240, h: 52 };
+    // el botón es grande para poder tocarlo bien en celular
+    this.btnRect = this.tall ? { x: 520, y: 58, w: 260, h: 78 } : { x: 260, y: 528, w: 280, h: 64 };
+    const b = this.btnRect;
+    this.btnLabel = this.add.text(b.x + b.w / 2, b.y + b.h / 2, PUZZLE.button, { ...TEXT, fontSize: '22px', fontStyle: '800', color: CSS.gold }).setOrigin(0.5).setDepth(7);
     this.drawButton(false);
   }
 
@@ -275,17 +302,49 @@ class MemoryPuzzleScene extends Phaser.Scene {
       return;
     }
     if (code === 'ArrowUp' || code === 'KeyW' || code === 'ArrowDown' || code === 'KeyS') {
-      if (this.held) return;   // con una tarjeta en la mano solo se elige la casilla
-      const zones = ['slots', 'tray', 'button'];
-      const cur = zones.indexOf(f.zone === 'tray' ? 'tray' : f.zone);
-      // arriba: casillas; abajo: bandeja y luego el botón
-      const next = code === 'ArrowUp' || code === 'KeyW' ? Math.max(0, cur - 1) : Math.min(2, cur + 1);
-      f.zone = zones[next];
-      if (f.zone === 'tray') { const list = this.trayCards(); f.i = list.length ? list[0].home : 0; if (!list.length) f.zone = 'slots'; }
-      this.syncCursor();
+      this.vertical(code === 'ArrowUp' || code === 'KeyW' ? -1 : 1);
       return;
     }
     if (code === 'Space' || code === 'Enter') this.activate();
+  }
+
+  // ↑↓: con dos filas se mueve entre las filas de una zona y, al llegar al borde, pasa a la zona siguiente
+  // (casillas, bandeja, botón). Con una tarjeta en la mano solo se mueve entre filas de casillas.
+  vertical(dir) {
+    const f = this.focus, pr = this.perRow;
+    const trayRow = (r) => this.trayCards().filter((c) => Math.floor(c.home / pr) === r);
+    const nearest = (cards, col) => cards.reduce((best, c) => (best === null || Math.abs((c.home % pr) - col) < Math.abs((best.home % pr) - col) ? c : best), null);
+    if (this.held) {
+      if (f.zone === 'slots') { const j = f.i + dir * pr; if (j >= 0 && j < this.n) f.i = j; this.syncCursor(); }
+      return;
+    }
+    if (f.zone === 'slots') {
+      const row = Math.floor(f.i / pr);
+      if (dir < 0) { if (row > 0) f.i -= pr; }
+      else if (row < this.rows - 1 && f.i + pr < this.n) f.i += pr;
+      else if (row < this.rows - 1) f.i = this.n - 1;
+      else {
+        // desde la última fila de casillas se baja a la bandeja
+        for (let r = 0; r < this.rows; r++) {
+          const c = nearest(trayRow(r), f.i % pr);
+          if (c) { f.zone = 'tray'; f.i = c.home; break; }
+        }
+        if (f.zone !== 'tray') f.zone = 'button';
+      }
+    } else if (f.zone === 'tray') {
+      const row = Math.floor(f.i / pr), col = f.i % pr;
+      let target = null;
+      for (let r = row + dir; r >= 0 && r < this.rows && !target; r += dir) target = nearest(trayRow(r), col);
+      if (target) f.i = target.home;
+      else if (dir > 0) f.zone = 'button';
+      else { f.zone = 'slots'; f.i = Math.min(this.n - 1, (this.rows - 1) * pr + col); }
+    } else if (dir < 0) {
+      // desde el botón, a la última fila de la bandeja que tenga tarjetas
+      let target = null;
+      for (let r = this.rows - 1; r >= 0 && !target; r--) target = nearest(trayRow(r), 0);
+      if (target) { f.zone = 'tray'; f.i = target.home; } else { f.zone = 'slots'; f.i = this.n - 1; }
+    }
+    this.syncCursor();
   }
 
   // Espacio o Enter según la zona
@@ -475,7 +534,7 @@ class MemoryPuzzleScene extends Phaser.Scene {
     if (this.hintTween) this.hintTween.stop();
     [2, 3, 4, 5, 6, 7].forEach((f, i) => this.time.delayedCall(i * 90, () => beep(this, 440 + f * 60, 0.18, 'triangle')));
     this.message.setText('');
-    const ui = [this.slotG, this.hintG, this.caption, this.btnBox, this.btnLabel].concat(this.slotNums, Object.values(this.cards).map((c) => c.c));
+    const ui = [this.slotG, this.hintG, this.caption, this.btnBox, this.btnLabel, this.titleText, this.message].concat(this.slotNums, Object.values(this.cards).map((c) => c.c));
     this.tweens.add({ targets: ui, alpha: 0, duration: 500 });
     this.film = puzzleOrder(this.ids);
     this.filmIndex = -1;
@@ -529,24 +588,28 @@ class MemoryPuzzleScene extends Phaser.Scene {
     [262, 330, 392, 523].forEach((f, i) => this.time.delayedCall(i * 250, () => beep(this, f, 0.5, 'triangle')));
     // las hojas se deslizan hacia los lados y entra la luz
     this.tweens.add({ targets: this.doorLight, alpha: 1, duration: 1800, delay: 400 });
-    this.tweens.add({ targets: this.leftLeaf, x: 205, duration: 1800, delay: 400, ease: 'Sine.InOut' });
-    this.tweens.add({ targets: this.rightLeaf, x: 395, duration: 1800, delay: 400, ease: 'Sine.InOut' });
+    const k = this.doorK;
+    this.tweens.add({ targets: this.leftLeaf, x: this.doorX - 95 * k, duration: 1800, delay: 400, ease: 'Sine.InOut' });
+    this.tweens.add({ targets: this.rightLeaf, x: this.doorX + 95 * k, duration: 1800, delay: 400, ease: 'Sine.InOut' });
 
     // la serpiente (con las amigas) sube hacia la puerta
     const snake = [];
     for (let k = 0; k < 4 + GameState.friends.length; k++) snake.push({ x: 20, y: 25 + k });
-    const sg = this.add.graphics({ x: -10, y: -80 }).setDepth(20).setAlpha(0);   // la cabeza empieza en y = 420
+    // la cabeza sube desde ~190 px debajo de la puerta hasta justo dentro de ella (la cabeza está en y = 500 + sg.y)
+    const yStart = this.doorBottom + 190 - 500, yEnd = this.doorBottom - 70 - 500;
+    const sg = this.add.graphics({ x: -10, y: yStart }).setDepth(20).setAlpha(0);
     drawSnake(sg, snake, { x: 0, y: -1 }, false, 5, this.friendColors());
     this.tweens.add({ targets: sg, alpha: 1, duration: 400, delay: 1900 });
     // Inti, de pie, con su mochila
-    const human = this.add.graphics({ x: 400, y: 215 }).setDepth(21).setAlpha(0);
+    const human = this.add.graphics({ x: 400, y: this.doorBottom - 10 }).setDepth(21).setAlpha(0);
     artPerson(human, 0, 0, 100, 0x3d5bd9, true);
+    human.setScale(Math.max(0.7, k));
     const text = this.add.text(400, 520, PUZZLE.crossing, { ...TEXT, fontSize: '22px', fontStyle: '700', color: CSS.goldLight, align: 'center', wordWrap: { width: 700 }, stroke: '#0b1410', strokeThickness: 4 }).setOrigin(0.5).setDepth(22).setAlpha(0);
     this.tweens.add({
-      targets: sg, y: -340, duration: 3200, delay: 2300, ease: 'Sine.InOut',
-      onUpdate: () => { if (sg.y < -240) sg.setAlpha(Phaser.Math.Clamp((sg.y + 330) / 90, 0, 1)); }
+      targets: sg, y: yEnd, duration: 3200, delay: 2300, ease: 'Sine.InOut',
+      onUpdate: () => { const headY = 500 + sg.y; if (headY < this.doorBottom + 30) sg.setAlpha(Phaser.Math.Clamp((headY - (this.doorBottom - 60)) / 90, 0, 1)); }
     });
-    this.tweens.add({ targets: human, alpha: 1, y: 150, duration: 1800, delay: 4300, ease: 'Sine.Out' });
+    this.tweens.add({ targets: human, alpha: 1, y: this.doorBottom - 70 * k, duration: 1800, delay: 4300, ease: 'Sine.Out' });
     this.tweens.add({ targets: text, alpha: 1, duration: 800, delay: 5000 });
     this.time.delayedCall(7600, () => this.leave());
   }

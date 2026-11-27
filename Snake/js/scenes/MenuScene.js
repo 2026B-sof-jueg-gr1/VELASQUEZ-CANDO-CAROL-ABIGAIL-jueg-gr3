@@ -58,7 +58,7 @@ class MenuScene extends Phaser.Scene {
 
     this.options = [];
     if (this.hasSave) {
-      const where = GameState.stage === 'puzzle' ? 'La puerta' : GameState.stage === 'boss' ? 'Batalla final' : 'Nivel ' + GameState.level + ' · ' + GameState.current().name;
+      const where = GameState.stage === 'puzzle' ? 'La puerta' : GameState.stage === 'boss' ? 'Batalla final' : GameState.stage === 'ending' ? 'El final' : 'Nivel ' + GameState.level + ' · ' + GameState.current().name;
       this.options.push({ id: 'continue', label: 'Continuar · ' + where });
     }
     this.options.push({ id: 'new', label: 'Nueva partida' });
@@ -118,7 +118,9 @@ class MenuScene extends Phaser.Scene {
     beep(this, 440, 0.12, 'square', 880);
     // Partida nueva: intro de la historia. Continuar: retoma donde iba (una tierra, la puerta o la batalla).
     if (opt.id === 'continue' && GameState.stage === 'puzzle') return this.scene.start('MemoryPuzzleScene');
-    if (opt.id === 'continue' && GameState.stage === 'boss') return this.scene.start(this.scene.manager.keys.BossScene ? 'BossScene' : 'MemoryPuzzleScene');
+    if (opt.id === 'continue' && GameState.stage === 'boss') return this.scene.start('BossScene');
+    // "El final": la escena de los finales (E3); mientras no exista, se retoma la batalla
+    if (opt.id === 'continue' && GameState.stage === 'ending') return this.scene.start(this.scene.manager.keys.EndingScene ? 'EndingScene' : 'BossScene');
     goToLevelStory(this, opt.id === 'new' ? STORY.intro : []);
   }
 }

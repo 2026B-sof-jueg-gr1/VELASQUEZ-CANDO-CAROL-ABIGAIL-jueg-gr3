@@ -76,6 +76,53 @@ const ENEMIES = {
   murcielagos: { name: 'Murciélagos', step: 130, zig: 3, cap: 3 }
 };
 
+// La batalla final. La arena es un mapa suelto con la forma de LEVELS: bordes abiertos y sin piedras,
+// así la mega serpiente puede perseguir cruzando los bordes sin complicarse.
+const BOSS_ARENA = { id: 'arena', name: 'Arena', scenario: 4, edges: OPEN_EDGES, gapsX: [], gapsY: [], rocks: [], enemy: null, friend: null };
+const BOSS = {
+  arena: BOSS_ARENA,
+  playerStep: 110,            // ms por paso de la super serpiente
+  bossStep: 140,              // ms por paso de la mega serpiente (un poco más lenta)
+  playerLen: 8,               // segmentos de la super serpiente sin contar a las amigas (cada amiga suma uno)
+  bossLen: 20,                // segmentos con los que empieza la mega serpiente
+  hits: 4,                    // golpes para deshacerla
+  hitCut: 0.25,               // cada golpe le quita este porcentaje de segmentos (mínimo 3)
+  retreat: 2000,              // ms que se aleja (e invulnerable) tras un golpe
+  randomTurn: 0.2,            // probabilidad de elegir otra dirección válida
+  apples: 2,                  // manzanas en el arena
+  invuln: 1000,               // ms de invulnerabilidad del jugador después de gastar el escudo
+  selfCollisionKills: true,   // chocar con el propio cuerpo también es derrota
+  player: { x: 10, y: 20, dir: { x: 1, y: 0 } },   // cabeza y dirección de salida
+  boss: { x: 30, y: 9, dir: { x: -1, y: 0 } },
+  minStartDist: 12            // celdas mínimas entre las dos cabezas al empezar
+};
+// Poderes de las amigas en la batalla (teclas 1 a 5, en el orden de las tierras). `cd` = recarga en ms.
+const BOSS_POWERS = {
+  musgo: { key: 1, name: 'Escudo', desc: 'Aguanta un golpe', cd: 15000 },
+  duna: { key: 2, name: 'Golpe doble', desc: 'El siguiente golpe cuenta por dos', cd: 15000 },
+  escarcha: { key: 3, name: 'Congela', desc: 'La mega serpiente va 1,6 veces más lenta por 5 s', cd: 15000, time: 5000, slow: 1.6 },
+  brasa: { key: 4, name: 'Corte', desc: 'Le quita el 30 % de la cola', cd: 15000, cut: 0.3 },
+  luna: { key: 5, name: 'Visión', desc: 'Marca hacia dónde se mueve por 3 s', cd: 15000, time: 3000, cells: 6 }
+};
+
+// Textos de la batalla final
+const BOSS_TEXT = {
+  intro: [
+    'La serpiente se separó de Inti…',
+    '…cruzó la puerta detrás de él y creció hasta llenar el bosque.',
+    'Pero Inti no estaba solo: sus amigos acudieron.',
+    'Juntos formaron una super serpiente. ¡A pelear!'
+  ],
+  solo: 'Pero Inti no tenía amigos a quienes llamar. Peleará con lo que tiene.',
+  skip: 'ESPACIO o toca: saltar',
+  help: 'Flechas / WASD / deslizar: moverte  ·  1 a 5 o toca el ícono: poder de una amiga  ·  P: pausa',
+  defeat: 'La serpiente envuelve a Inti…',
+  defeatSub: 'Su forma humana empieza a desvanecerse',
+  retry: 'ESPACIO o toca: reintentar la batalla   ·   M: menú',
+  win: 'La mega serpiente se deshace…',
+  winSub: 'La forma humana de Inti queda fija para siempre'
+};
+
 // Textos del puzzle de la puerta
 const PUZZLE = {
   title: 'La puerta de regreso',

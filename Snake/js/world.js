@@ -8,9 +8,12 @@ const LANDING_MIN = 10;              // celdas libres en línea recta después d
 const cellKey = (x, y) => x + ',' + y;
 
 class World {
-  constructor(levelIdx) {
-    this.levelIdx = levelIdx;
-    const lv = LEVELS[levelIdx];
+  // `ref` es el número de una tierra (0 a 4) o un mapa suelto con la misma forma (la arena de la batalla final)
+  constructor(ref) {
+    const lv = typeof ref === 'number' ? LEVELS[ref] : ref;
+    this.def = lv;
+    this.levelIdx = typeof ref === 'number' ? ref : -1;
+    this.scenario = lv.scenario;
     this.name = lv.name;
     this.edges = lv.edges;
     this.gapsX = lv.gapsX || [];
@@ -294,8 +297,8 @@ class World {
     const farFromSpawn = (c) => Math.max(Math.abs(c.x - SPAWN.x), Math.abs(c.y - SPAWN.y)) >= ENEMY_MIN_DIST
       && !(c.y === SPAWN.y && c.x > SPAWN.x && c.x <= SPAWN.x + ENEMY_MIN_DIST);
     const spawnable = this.spawnableCells(rep.traps).filter(farFromSpawn);
-    const enemy = LEVELS[this.levelIdx].enemy;
-    let valid = 0, need = 10;
+    const enemy = this.def.enemy;
+    let valid = 0, need = enemy ? 10 : 0;
     const sset = new Set(spawnable.map((c) => cellKey(c.x, c.y)));
     if (enemy === 'hormigas') {
       // las hormigas entran por un borde abierto o hueco, en una fila a ENEMY_ENTRY_ROW_DIST o más de la cabeza
@@ -311,13 +314,13 @@ class World {
       spawnable.forEach((c) => { if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => this.freeRun(c.x, c.y, dx, dy, 6) >= 6)) valid++; });
     } else if (enemy === 'lava') {
       valid = spawnable.length; need = 20;
-    } else {
+    } else if (enemy) {
       valid = spawnable.length;
     }
     // Amiga de esta tierra: casillas válidas vistas desde la salida (misma regla que los enemigos)
-    const friend = LEVELS[this.levelIdx].friend;
-    const fValid = this.friendCandidates(friend, SPAWN, rep.traps).length;
-    const fNeed = friend === 'escarcha' || friend === 'brasa' ? 5 : 10;
+    const friend = this.def.friend;
+    const fValid = friend ? this.friendCandidates(friend, SPAWN, rep.traps).length : 0;
+    const fNeed = !friend ? 0 : friend === 'escarcha' || friend === 'brasa' ? 5 : 10;
     rep.friend = { id: friend, valid: fValid, need: fNeed };
     if (fValid < fNeed) rep.problems.push('amiga ' + friend + ': solo ' + fValid + ' casillas válidas (se necesitan ' + fNeed + ')');
     rep.enemy = { type: enemy, valid, need };
@@ -342,9 +345,20 @@ function validateAllWorlds() {
     });
     if (r.problems.length) { ok = false; r.problems.forEach((p) => console.warn('[Nivel ' + (i + 1) + ' ' + r.name + '] ' + p)); }
   });
+  // La arena de la batalla final: sin piedras, con los 4 bordes abiertos
+  const arena = new World(BOSS.arena).report;
+  rows.push({
+    nivel: 'Arena', tierra: arena.name, piedras: arena.rocks, libres: arena.free, sinAlcanzar: arena.unreachable.length,
+    trampas: arena.traps.size, salidaLibre: arena.spawnOk, aterrizajeFallos: arena.landing.length, pasillos1: arena.narrow.length,
+    celdasAterrizaje: arena.landingCells, enemigo: '-', aparicionValida: '-', amiga: '-', casillasAmiga: '-'
+  });
+  if (!arena.ok) { ok = false; arena.problems.forEach((p) => console.warn('[Arena] ' + p)); }
+  const bs = validateBoss();
+  if (!bs.ok) { ok = false; bs.problems.forEach((p) => console.warn('[Batalla] ' + p)); }
   const pz = validatePuzzle();
   if (!pz.ok) { ok = false; pz.problems.forEach((p) => console.warn('[Puzzle] ' + p)); }
   console.table(rows);
+  console.log(bs.ok ? 'Batalla: arena abierta sin piedras, salidas separadas, poderes de las 5 amigas y reglas de la mega serpiente: bien.' : 'Batalla: hay avisos (ver arriba).');
   console.log(pz.ok ? 'Puzzle: orden de los 10 recuerdos, validación con 5 y con 10 y ayuda: bien.' : 'Puzzle: hay avisos (ver arriba).');
   console.log(ok ? 'Validador: los 5 niveles pasan.' : 'Validador: hay avisos (ver arriba).');
   return ok;
@@ -416,7 +430,7 @@ function drawStone(g, px, py, style) {
 // Dibuja las piedras del tablero y el marco de la tierra. Devuelve { stones, glow }
 // (`glow` es la franja dorada que respira en los bordes que se cruzan).
 function createWorldVisuals(scene, world) {
-  const style = LEVELS[world.levelIdx].scenario;
+  const style = world.scenario;
   const stones = scene.add.graphics().setDepth(1.5);
 
   // Piedras del tablero (las que se rellenaron como red de seguridad también)
