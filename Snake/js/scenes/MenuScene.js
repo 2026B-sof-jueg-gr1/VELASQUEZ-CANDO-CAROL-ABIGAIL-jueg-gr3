@@ -53,7 +53,20 @@ class MenuScene extends Phaser.Scene {
     }
     if (DEBUG) front(this.add.text(60, 585, 'MODO DEBUG', { ...TEXT, fontSize: '14px', color: '#1a1204', backgroundColor: '#f2b33d', padding: { x: 6, y: 2 } }));
 
+    // Interruptor de sonido, arriba a la derecha (al menos 44 px reales en celular). Tecla M en el teclado.
+    const r = touchRadius(this, 24);
+    this.soundBtn = makeSoundButton(this, 800 - r - 8, r + 8, r, DEPTH.hud + 1);
+    this.soundLabel = front(this.add.text(800 - r - 8, 2 * r + 20, 'Sonido (M)', { ...TEXT, fontSize: '13px', color: PAL.muted, backgroundColor: 'rgba(11,20,16,0.7)', padding: { x: 4, y: 1 } }));
+    this.scale.on('resize', this.relayoutSound, this);
+    this.events.once('shutdown', () => this.scale.off('resize', this.relayoutSound, this));
+
     this.createButtons(front);
+  }
+
+  relayoutSound() {
+    const r = touchRadius(this, 24);
+    this.soundBtn.setPos(800 - r - 8, r + 8, r);
+    this.soundLabel.setPosition(800 - r - 8, 2 * r + 20);
   }
 
   // Botones "Continuar" (solo si hay partida guardada) y "Nueva partida"
@@ -88,6 +101,7 @@ class MenuScene extends Phaser.Scene {
       if (e.code === 'ArrowUp' || e.code === 'KeyW') this.select(this.sel - 1);
       else if (e.code === 'ArrowDown' || e.code === 'KeyS') this.select(this.sel + 1);
       else if (e.code === 'Space' || e.code === 'Enter') this.activate();
+      else if (e.code === 'KeyM') { setMuted(!SOUND.muted); this.soundBtn.redraw(); }
     });
   }
 

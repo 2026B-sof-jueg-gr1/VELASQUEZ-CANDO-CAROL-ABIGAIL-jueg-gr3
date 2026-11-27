@@ -432,9 +432,29 @@ function drawStone(g, px, py, style) {
 
 // Dibuja las piedras del tablero y el marco de la tierra. Devuelve { stones, glow }
 // (`glow` es la franja dorada que respira en los bordes que se cruzan).
+// Las piedras (más de 140 en los niveles 4 y 5, con unas 14 órdenes de dibujo cada una) y la franja dorada
+// se dibujan UNA sola vez en dos texturas por mapa. Un objeto Graphics se vuelve a trazar entero en cada cuadro,
+// y eso hacía lento el volcán y la noche. Las texturas se guardan: al reintentar un nivel ya están hechas.
 function createWorldVisuals(scene, world) {
+  const id = world.levelIdx >= 0 ? 'L' + world.levelIdx : 'arena';
+  const keyS = 'world-stones-' + id, keyG = 'world-glow-' + id;
+  if (!scene.textures.exists(keyS) || !scene.textures.exists(keyG)) {
+    if (scene.textures.exists(keyS)) scene.textures.remove(keyS);
+    if (scene.textures.exists(keyG)) scene.textures.remove(keyG);
+    bakeWorldTextures(scene, world, keyS, keyG);
+  }
+  // las texturas cubren el tablero y el anillo del marco: de -MARGIN a GAME_W - MARGIN
+  const stones = scene.add.image(-MARGIN, -MARGIN, keyS).setOrigin(0, 0).setDepth(1.5);
+  const glow = scene.add.image(-MARGIN, -MARGIN, keyG).setOrigin(0, 0).setDepth(1.6);
+  // Respira despacio, sin parpadeos
+  scene.tweens.add({ targets: glow, alpha: { from: 0.55, to: 1 }, duration: 2200, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+  return { stones, glow };
+}
+
+function bakeWorldTextures(scene, world, keyS, keyG) {
   const style = world.scenario;
-  const stones = scene.add.graphics().setDepth(1.5);
+  const stones = scene.make.graphics({ add: false });
+  stones.translateCanvas(MARGIN, MARGIN);
 
   // Piedras del tablero (las que se rellenaron como red de seguridad también)
   world.rocks.forEach((k) => {
@@ -459,7 +479,8 @@ function createWorldVisuals(scene, world) {
   });
 
   // Franja dorada en los bordes que se cruzan: más fuerte pegada al tablero, se apaga hacia afuera
-  const glow = scene.add.graphics().setDepth(1.6);
+  const glow = scene.make.graphics({ add: false });
+  glow.translateCanvas(MARGIN, MARGIN);
   const layers = 10;
   const strip = (x0, y0, x1, y1, horizontal, outward) => {
     // horizontal: franja a lo largo de x; outward = -1 (arriba/izquierda) o +1 (abajo/derecha)
@@ -497,8 +518,8 @@ function createWorldVisuals(scene, world) {
   runs('B', COLS).forEach(([a, b]) => strip(a * CELL, 0, b * CELL, ROWS * CELL, true, 1));
   runs('L', ROWS).forEach(([a, b]) => strip(0, a * CELL, 0, b * CELL, false, -1));
   runs('R', ROWS).forEach(([a, b]) => strip(0, a * CELL, COLS * CELL, b * CELL, false, 1));
-  // Respira despacio, sin parpadeos
-  scene.tweens.add({ targets: glow, alpha: { from: 0.55, to: 1 }, duration: 2200, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
-
-  return { stones, glow };
+  stones.generateTexture(keyS, GAME_W, GAME_H);
+  glow.generateTexture(keyG, GAME_W, GAME_H);
+  stones.destroy();
+  glow.destroy();
 }

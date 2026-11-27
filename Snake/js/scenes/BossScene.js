@@ -43,13 +43,17 @@ class BossScene extends Phaser.Scene {
     this.pauseLayer = this.add.container(0, 0, [
       this.add.rectangle(400, 300, GAME_W, GAME_H, PAL.bg, 0.65),
       this.add.text(400, 280, 'Pausa', { ...TITLE, fontSize: '48px' }).setOrigin(0.5),
-      this.add.text(400, 335, 'P o Esc para continuar', { ...TEXT, fontSize: '18px', color: PAL.muted }).setOrigin(0.5)
+      this.add.text(400, 335, isTouch(this) ? 'Toca ▶ para continuar' : 'P o Esc para continuar', { ...TEXT, fontSize: '18px', color: PAL.muted }).setOrigin(0.5)
     ]).setVisible(false).setDepth(DEPTH.overlay);
+    this.buildTouchUi();
 
     this.input.keyboard.addCapture('UP,DOWN,LEFT,RIGHT,SPACE');
     this.input.keyboard.on('keydown', (e) => this.handleKey(e.code));
     this.tapped = false;
-    this.input.on('pointerdown', (p) => this.onDown(p.x - MARGIN, p.y - MARGIN));
+    this.input.on('pointerdown', (p) => {
+      if (this.input.hitTestPointer(p).length) { this.swipe = null; this.tapped = true; return; }   // un botón, no un giro
+      this.onDown(p.x - MARGIN, p.y - MARGIN);
+    });
     this.input.on('pointermove', (p) => this.onMove(p));
     this.input.on('pointerup', () => { this.swipe = null; });
 
@@ -147,6 +151,7 @@ class BossScene extends Phaser.Scene {
     this.bdir = { ...b.dir };
     this.hits = 0;
     this.pAcc = 0; this.bAcc = 0;
+    this.dirty = true; this.hudAt = -1000;
     this.pInvuln = 0; this.retreat = 0; this.freeze = 0; this.vision = 0;
     this.shield = false; this.doubleNext = false;
     this.cooldown = {};
@@ -188,7 +193,9 @@ class BossScene extends Phaser.Scene {
     this.pInvuln = Math.max(0, this.pInvuln - dt);
     this.retreat = Math.max(0, this.retreat - dt);
     this.freeze = Math.max(0, this.freeze - dt);
+    const hadVision = this.vision > 0;
     this.vision = Math.max(0, this.vision - dt);
+    if (hadVision && this.vision <= 0) this.dirty = true;
     Object.keys(this.cooldown).forEach((id) => { this.cooldown[id] = Math.max(0, this.cooldown[id] - dt); });
 
     this.pAcc += dt;
@@ -201,6 +208,7 @@ class BossScene extends Phaser.Scene {
 
   // Un paso de la super serpiente
   playerStep() {
+    this.dirty = true;
     if (this.queue.length) this.pdir = this.queue.shift();
     const next = wrapStep(this.player[0], this.pdir);
     const hit = classifyPlayerMove(next, this.player, this.boss);
@@ -213,6 +221,7 @@ class BossScene extends Phaser.Scene {
 
   // Un paso de la mega serpiente
   bossStep() {
+    this.dirty = true;
     const flee = this.retreat > 0;
     this.bdir = bossChooseDir(this.boss, this.bdir, this.player[0], Math.random, { flee });
     const next = wrapStep(this.boss[0], this.bdir);
@@ -230,6 +239,7 @@ class BossScene extends Phaser.Scene {
   }
 
   hurtBoss() {
+    this.dirty = true;
     const amount = this.doubleNext ? 2 : 1;
     this.doubleNext = false;
     const res = bossTakeHit(this.boss.length, this.hits, amount);
@@ -247,6 +257,7 @@ class BossScene extends Phaser.Scene {
 
   useShield() {
     if (!this.shield) return false;
+    this.dirty = true;
     this.shield = false;
     this.pInvuln = BOSS.invuln;
     this.cameras.main.shake(120, 0.005);
@@ -254,6 +265,37 @@ class BossScene extends Phaser.Scene {
     const h = this.player[0];
     this.floatText(h.x * CELL + CELL / 2, h.y * CELL, '¡Escudo!', CSS.gold);
     return true;
+  }
+
+  // Botón de pausa (solo con pantalla táctil, abajo a la derecha) y de sonido (dentro de la pausa).
+  // Miden al menos 44 px reales: el radio se calcula con la escala actual de la pantalla.
+  buildTouchUi() {
+    const r = touchRadius(this, 20);
+    this.pauseBtn = isTouch(this)
+      ? makeRoundButton(this, 800 - r - 6, 600 - r - 6, r, DEPTH.overlay + 1, () => (this.paused ? 'play' : 'pause'), () => this.togglePause())
+      : null;
+    this.soundBtn = makeSoundButton(this, 400, 430, Math.max(r, 30), DEPTH.overlay + 1);
+    this.soundBtn.g.setVisible(false);
+    this.soundBtn.zone.input.enabled = false;
+    this.soundLabel = this.add.text(400, 430 + Math.max(r, 30) + 14, 'Sonido', { ...TEXT, fontSize: '15px', color: PAL.muted }).setOrigin(0.5).setDepth(DEPTH.overlay + 1).setVisible(false);
+    this.scale.on('resize', this.relayoutUi, this);
+    this.events.once('shutdown', () => this.scale.off('resize', this.relayoutUi, this));
+  }
+
+  relayoutUi() {
+    const r = touchRadius(this, 20);
+    if (this.pauseBtn) this.pauseBtn.setPos(800 - r - 6, 600 - r - 6, r);
+    this.soundBtn.setPos(400, 430, Math.max(r, 30));
+    this.soundLabel.setY(430 + Math.max(r, 30) + 14);
+  }
+
+  // Al pausar se muestran el interruptor de sonido y el ícono de continuar
+  syncPauseUi() {
+    this.soundBtn.g.setVisible(this.paused);
+    this.soundLabel.setVisible(this.paused);
+    this.soundBtn.zone.input.enabled = this.paused;
+    this.soundBtn.redraw();
+    if (this.pauseBtn) this.pauseBtn.redraw();
   }
 
   // ---------- Poderes de las amigas ----------
@@ -296,6 +338,7 @@ class BossScene extends Phaser.Scene {
     const def = BOSS_POWERS[id];
     if (!this.friendIds.includes(id) || (this.cooldown[id] || 0) > 0) return;
     this.cooldown[id] = def.cd;
+    this.dirty = true;
     if (id === 'musgo') this.shield = true;
     if (id === 'duna') this.doubleNext = true;
     if (id === 'escarcha') this.freeze = def.time;
@@ -336,18 +379,24 @@ class BossScene extends Phaser.Scene {
     }
   }
 
+  // Los segmentos se redibujan solo cuando algo cambia (un paso, un golpe, un poder): un Graphics se vuelve a trazar
+  // entero en cada cuadro, así que redibujar 30 segmentos 60 veces por segundo era lo que hacía lenta la batalla.
+  // El pulso suave al alejarse o al ser invulnerable es solo transparencia, que sí cambia en cada cuadro.
   drawAll(time) {
-    // la mega serpiente se ve con un pulso suave mientras se aleja (sin destellos)
-    this.bossG.clear();
     this.bossG.setAlpha(this.retreat > 0 ? 0.55 + 0.35 * Math.sin(time * 0.012) : 1);
-    this.drawBoss(this.bossG, this.boss, this.bdir, this.retreat, this.freeze);
-
-    this.playerG.clear();
     this.playerG.setAlpha(this.pInvuln > 0 ? 0.7 + 0.3 * Math.sin(time * 0.012) : 1);
+    this.rider.setAlpha(this.playerG.alpha);
+    if (this.dirty) { this.dirty = false; this.redrawBattle(); }
+    if (time - this.hudAt >= 100 || time < this.hudAt) { this.hudAt = time; this.drawHud(); }   // la barra y las recargas, 10 veces por segundo
+  }
+
+  redrawBattle() {
+    this.bossG.clear();
+    this.drawBoss(this.bossG, this.boss, this.bdir, this.retreat, this.freeze);
+    this.playerG.clear();
     drawSnake(this.playerG, this.player, this.pdir, this.shield, 5, this.friendColors);
     const h = this.player[0];
     this.rider.setPosition(h.x * CELL + CELL / 2, h.y * CELL + CELL / 2 - 4);
-    this.rider.setAlpha(this.playerG.alpha);
 
     // la visión de Luna marca las próximas celdas de la mega serpiente
     this.visionG.clear();
@@ -359,7 +408,6 @@ class BossScene extends Phaser.Scene {
         this.visionG.strokeRoundedRect(c.x * CELL + 3, c.y * CELL + 3, CELL - 6, CELL - 6, 5);
       });
     }
-    this.drawHud();
   }
 
   drawHud() {
@@ -463,6 +511,7 @@ class BossScene extends Phaser.Scene {
   togglePause() {
     this.paused = !this.paused;
     this.pauseLayer.setVisible(this.paused);
+    this.syncPauseUi();
     if (this.paused) this.tweens.pauseAll(); else this.tweens.resumeAll();
   }
 
@@ -508,6 +557,7 @@ class BossScene extends Phaser.Scene {
     if (this.phase !== 'battle') return;
     this.phase = 'lose';
     this.loseReady = false;
+    if (this.pauseBtn) { this.pauseBtn.g.setVisible(false); this.pauseBtn.zone.input.enabled = false; }
     this.cameras.main.shake(200, 0.005);
     beep(this, 300, 0.7, 'sawtooth', 60);
     this.playerG.setAlpha(1);

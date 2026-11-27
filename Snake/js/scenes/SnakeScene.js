@@ -83,8 +83,9 @@ class SnakeScene extends Phaser.Scene {
     this.pauseLayer = this.add.container(0, 0, [
       this.add.rectangle(400, 300, GAME_W, GAME_H, PAL.bg, 0.65),
       this.add.text(400, 280, 'Pausa', { ...TITLE, fontSize: '48px' }).setOrigin(0.5),
-      this.add.text(400, 335, 'P o Esc para continuar', { ...TEXT, fontSize: '18px', color: PAL.muted }).setOrigin(0.5)
+      this.add.text(400, 335, isTouch(this) ? 'Toca ▶ para continuar' : 'P o Esc para continuar', { ...TEXT, fontSize: '18px', color: PAL.muted }).setOrigin(0.5)
     ]).setVisible(false).setDepth(DEPTH.overlay);
+    this.buildTouchUi();
 
     this.input.keyboard.addCapture('UP,DOWN,LEFT,RIGHT,SPACE');
     this.input.keyboard.on('keydown', (e) => this.handleKey(e.code));
@@ -93,7 +94,10 @@ class SnakeScene extends Phaser.Scene {
     // El giro se hace en cuanto el dedo recorre 24 px, sin esperar a que lo levantes; luego se mide desde ahí
     // (así se pueden encadenar giros con un solo gesto continuo).
     this.swipe = null;
-    this.input.on('pointerdown', (p) => { this.swipe = { x: p.x, y: p.y }; });
+    this.input.on('pointerdown', (p) => {
+      // tocar un botón (pausa, sonido) no es un deslizamiento
+      this.swipe = this.input.hitTestPointer(p).length ? null : { x: p.x, y: p.y };
+    });
     this.input.on('pointermove', (p) => {
       if (!p.isDown || !this.swipe) return;
       const dx = p.x - this.swipe.x, dy = p.y - this.swipe.y;
@@ -154,9 +158,41 @@ class SnakeScene extends Phaser.Scene {
     if (this.dead || this.busy) return;
     this.paused = !this.paused;
     this.pauseLayer.setVisible(this.paused);
+    this.syncPauseUi();
     // Detiene también los temporizadores y las animaciones
     this.time.paused = this.paused;
     if (this.paused) this.tweens.pauseAll(); else this.tweens.resumeAll();
+  }
+
+  // Botón de pausa (solo con pantalla táctil, abajo a la derecha) y de sonido (dentro de la pausa).
+  // Miden al menos 44 px reales: el radio se calcula con la escala actual de la pantalla.
+  buildTouchUi() {
+    const r = touchRadius(this, 20);
+    this.pauseBtn = isTouch(this)
+      ? makeRoundButton(this, 800 - r - 6, 600 - r - 6, r, DEPTH.overlay + 1, () => (this.paused ? 'play' : 'pause'), () => this.togglePause())
+      : null;
+    this.soundBtn = makeSoundButton(this, 400, 430, Math.max(r, 30), DEPTH.overlay + 1);
+    this.soundBtn.g.setVisible(false);
+    this.soundBtn.zone.input.enabled = false;
+    this.soundLabel = this.add.text(400, 430 + Math.max(r, 30) + 14, 'Sonido', { ...TEXT, fontSize: '15px', color: PAL.muted }).setOrigin(0.5).setDepth(DEPTH.overlay + 1).setVisible(false);
+    this.scale.on('resize', this.relayoutUi, this);
+    this.events.once('shutdown', () => this.scale.off('resize', this.relayoutUi, this));
+  }
+
+  relayoutUi() {
+    const r = touchRadius(this, 20);
+    if (this.pauseBtn) this.pauseBtn.setPos(800 - r - 6, 600 - r - 6, r);
+    this.soundBtn.setPos(400, 430, Math.max(r, 30));
+    this.soundLabel.setY(430 + Math.max(r, 30) + 14);
+  }
+
+  // Al pausar se muestran el interruptor de sonido y el ícono de continuar
+  syncPauseUi() {
+    this.soundBtn.g.setVisible(this.paused);
+    this.soundLabel.setVisible(this.paused);
+    this.soundBtn.zone.input.enabled = this.paused;
+    this.soundBtn.redraw();
+    if (this.pauseBtn) this.pauseBtn.redraw();
   }
 
   update(time, delta) {
@@ -690,6 +726,7 @@ class SnakeScene extends Phaser.Scene {
 
   gameOver(won = false, note = '') {
     this.dead = true;
+    if (this.pauseBtn) { this.pauseBtn.g.setVisible(false); this.pauseBtn.zone.input.enabled = false; }
     // Los materiales de este nivel se conservan (ya están guardados en GameState)
     this.removeMaterial();
     this.removeFruit();
@@ -712,7 +749,7 @@ class SnakeScene extends Phaser.Scene {
 
     const over = (obj) => obj.setDepth(DEPTH.overlay);
     over(this.add.rectangle(400, 300, GAME_W, GAME_H, PAL.bg, 0.78));
-    over(this.add.text(400, 230, won ? '¡Ganaste!' : 'Game Over', {
+    over(this.add.text(400, 230, won ? '¡Ganaste!' : 'Fin del juego', {
       ...TITLE, fontSize: '56px'
     }).setOrigin(0.5));
     over(this.add.text(400, 300, 'Puntos: ' + this.score + '   ·   Nivel ' + GameState.level, {
