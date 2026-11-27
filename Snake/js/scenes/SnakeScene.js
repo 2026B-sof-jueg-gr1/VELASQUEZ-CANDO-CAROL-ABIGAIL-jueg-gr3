@@ -90,12 +90,18 @@ class SnakeScene extends Phaser.Scene {
     this.input.keyboard.on('keydown', (e) => this.handleKey(e.code));
 
     // Deslizar el dedo en pantallas táctiles
-    this.input.on('pointerup', (p) => {
-      const dx = p.upX - p.downX;
-      const dy = p.upY - p.downY;
-      if (Math.max(Math.abs(dx), Math.abs(dy)) < 30) return;
+    // El giro se hace en cuanto el dedo recorre 24 px, sin esperar a que lo levantes; luego se mide desde ahí
+    // (así se pueden encadenar giros con un solo gesto continuo).
+    this.swipe = null;
+    this.input.on('pointerdown', (p) => { this.swipe = { x: p.x, y: p.y }; });
+    this.input.on('pointermove', (p) => {
+      if (!p.isDown || !this.swipe) return;
+      const dx = p.x - this.swipe.x, dy = p.y - this.swipe.y;
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
       this.turn(Math.abs(dx) > Math.abs(dy) ? { x: Math.sign(dx), y: 0 } : { x: 0, y: Math.sign(dy) });
+      this.swipe = { x: p.x, y: p.y };
     });
+    this.input.on('pointerup', () => { this.swipe = null; });
 
     this.cameras.main.fadeIn(450, 11, 20, 16);
     this.showBanner('Nivel ' + GameState.level + ' · ' + this.scenario.name);
@@ -725,8 +731,11 @@ class SnakeScene extends Phaser.Scene {
       ...TEXT, fontSize: '18px', color: PAL.muted
     }).setOrigin(0.5));
 
-    this.input.keyboard.once('keydown-SPACE', () => this.scene.restart());
-    this.input.keyboard.once('keydown-M', () => this.scene.start('MenuScene'));
-    this.input.once('pointerdown', () => this.scene.restart());
+    // Un instante antes de aceptar el reintento: así un deslizamiento o una pulsación apurada no reinicia sin dejar leer
+    this.time.delayedCall(700, () => {
+      this.input.keyboard.once('keydown-SPACE', () => this.scene.restart());
+      this.input.keyboard.once('keydown-M', () => this.scene.start('MenuScene'));
+      this.input.once('pointerdown', () => this.scene.restart());
+    });
   }
 }

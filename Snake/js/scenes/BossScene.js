@@ -50,7 +50,8 @@ class BossScene extends Phaser.Scene {
     this.input.keyboard.on('keydown', (e) => this.handleKey(e.code));
     this.tapped = false;
     this.input.on('pointerdown', (p) => this.onDown(p.x - MARGIN, p.y - MARGIN));
-    this.input.on('pointerup', (p) => this.onUp(p));
+    this.input.on('pointermove', (p) => this.onMove(p));
+    this.input.on('pointerup', () => { this.swipe = null; });
 
     if (this.skipIntro) this.startBattle(); else this.startIntro();
   }
@@ -467,6 +468,7 @@ class BossScene extends Phaser.Scene {
 
   onDown(x, y) {
     this.tapped = false;
+    this.swipe = { x: x + MARGIN, y: y + MARGIN };
     if (this.phase === 'intro') { this.endIntro(); this.tapped = true; return; }
     if (this.phase === 'lose') { if (this.loseReady) this.scene.restart({ skipIntro: true }); return; }
     if (this.phase !== 'battle') return;
@@ -474,11 +476,13 @@ class BossScene extends Phaser.Scene {
     if (hit) { this.tapped = true; this.activatePower(hit.id); }
   }
 
-  onUp(p) {
-    if (this.phase !== 'battle' || this.tapped || this.paused) return;
-    const dx = p.upX - p.downX, dy = p.upY - p.downY;
-    if (Math.max(Math.abs(dx), Math.abs(dy)) < 30) return;
+  // El giro se hace en cuanto el dedo recorre 24 px (sin esperar a levantarlo)
+  onMove(p) {
+    if (this.phase !== 'battle' || this.tapped || this.paused || !p.isDown || !this.swipe) return;
+    const dx = p.x - this.swipe.x, dy = p.y - this.swipe.y;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
     this.turn(Math.abs(dx) > Math.abs(dy) ? { x: Math.sign(dx), y: 0 } : { x: 0, y: Math.sign(dy) });
+    this.swipe = { x: p.x, y: p.y };
   }
 
   // ---------- Avisos ----------
