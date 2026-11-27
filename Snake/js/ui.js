@@ -94,6 +94,12 @@ function makeSoundButton(scene, x, y, r, depth) {
   });
 }
 
+// Con ?debug=1&fps=1 en la URL el contador sale solo desde que carga (para verlo en el celular, sin teclado)
+const FORCE_FPS = DEBUG && new URLSearchParams(window.location.search).get('fps') === '1';
+function autoFps(scene) {
+  if (FORCE_FPS && !scene._fps) toggleFps(scene);
+}
+
 // Contador de cuadros por segundo (tecla T en modo debug): sirve para mirar el rendimiento en un celular
 function toggleFps(scene) {
   if (scene._fps) {

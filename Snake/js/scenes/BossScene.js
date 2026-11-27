@@ -46,6 +46,7 @@ class BossScene extends Phaser.Scene {
       this.add.text(400, 335, isTouch(this) ? 'Toca ▶ para continuar' : 'P o Esc para continuar', { ...TEXT, fontSize: '18px', color: PAL.muted }).setOrigin(0.5)
     ]).setVisible(false).setDepth(DEPTH.overlay);
     this.buildTouchUi();
+    autoFps(this);
 
     this.input.keyboard.addCapture('UP,DOWN,LEFT,RIGHT,SPACE');
     this.input.keyboard.on('keydown', (e) => this.handleKey(e.code));

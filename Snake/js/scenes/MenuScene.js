@@ -61,6 +61,7 @@ class MenuScene extends Phaser.Scene {
     this.events.once('shutdown', () => this.scale.off('resize', this.relayoutSound, this));
 
     this.createButtons(front);
+    autoFps(this);
   }
 
   relayoutSound() {

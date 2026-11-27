@@ -3,7 +3,7 @@
 //   E = sacar un enemigo ya   L = ver aterrizaje / trampas / casillas de aparición
 //   F = sacar a la amiga ya   H = unirla ya (abre su recuerdo)
 //   K = los finales (la guardiana pregunta; en la pregunta, C cambia quién lleva la fruta)
-//   T = contador de cuadros por segundo (para mirar el rendimiento en el celular; ?touch=1 simula la pantalla táctil)
+//   T = contador de cuadros por segundo; con ?debug=1&fps=1 sale solo desde que carga (para el celular). ?touch=1 simula la pantalla táctil
 //   V = validar los mapas de las 5 tierras (resultado en la consola)
 const DEBUG = new URLSearchParams(window.location.search).get('debug') === '1';
 
