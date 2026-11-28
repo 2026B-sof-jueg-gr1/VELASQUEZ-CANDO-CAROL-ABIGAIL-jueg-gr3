@@ -10,6 +10,8 @@ class MemoryPuzzleScene extends Phaser.Scene {
   }
 
   init() {
+    // la instancia se reutiliza entre visitas: se reinicia lo que dejó la anterior (si no, la película de recuerdos podía quedar bloqueada)
+    this.filmBusy = false; this.filmTimer = null; this.hintTween = null; this.pressedButton = false; this.filmItems = [];
     // Los recuerdos que tiene la partida. En modo debug, si hay menos de 5, se usan los 10 para poder probar.
     this.ids = GameState.memories.slice();
     if (DEBUG && this.ids.length < 5) this.ids = Object.keys(MEMORIES);

@@ -8,6 +8,8 @@ class MemoryRingScene extends Phaser.Scene {
 
   init(data) {
     this.cfg = data || {};
+    this.leaving = false;        // si no se reinicia, el segundo recuerdo de la partida no responde
+    this.pressedButton = false;
   }
 
   create() {

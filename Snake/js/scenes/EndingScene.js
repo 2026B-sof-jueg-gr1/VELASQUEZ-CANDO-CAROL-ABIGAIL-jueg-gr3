@@ -16,6 +16,7 @@ class EndingScene extends Phaser.Scene {
     this.ending = data && data.ending;
     this.variant = (data && data.variant) || 0;
     this.chosen = false;
+    this.leaving = false;
     this.done = false;
     this.ready = false;
   }
